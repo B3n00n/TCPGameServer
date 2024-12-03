@@ -29,6 +29,7 @@ namespace GameServer
             {
                 new HandshakePacketHandler(),
                 new LoginPacketHandler(_authService),
+                new UtilsPacketHandler(),
                 // Add more...
             };
 
