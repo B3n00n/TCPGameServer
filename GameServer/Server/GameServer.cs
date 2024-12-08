@@ -1,11 +1,9 @@
-﻿using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Collections.Concurrent;
-using GameServer.Config;
+﻿using GameServer.Config;
 using GameServer.Handlers;
 using GameServer.Packets;
-using System.Buffers.Binary;
+using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Sockets;
 
 namespace GameServer
 {
@@ -30,7 +28,6 @@ namespace GameServer
                 new HandshakePacketHandler(),
                 new LoginPacketHandler(_authService),
                 new UtilsPacketHandler(),
-                // Add more...
             };
 
             _packetDispatcher = new PacketDispatcher(handlers);
@@ -65,85 +62,27 @@ namespace GameServer
             {
                 while (client.IsConnected)
                 {
-                    Console.WriteLine("Waiting for packet...");
-                    var packet = await ReadPacketAsync(client);
+                    // Just read the opcode byte
+                    var opcodeByte = new byte[1];
+                    var bytesRead = await client.GetStream().ReadAsync(opcodeByte, 0, 1);
+                    if (bytesRead != 1) break;
 
-                    if (packet == null)
-                    {
-                        Console.WriteLine("Received null packet, breaking connection loop");
-                        break;
-                    }
-
-                    Console.WriteLine($"Dispatching packet with opcode: {packet.Opcode}");
+                    var packet = new Packet(opcodeByte[0], Array.Empty<byte>());
                     await _packetDispatcher.DispatchPacketAsync(client, packet);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error handling client: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
             }
             finally
             {
-                Console.WriteLine("Client disconnected");
                 if (!string.IsNullOrEmpty(client.Username))
                 {
                     _authService.RemoveOnlinePlayer(client.Username);
                     _clients.TryRemove(client.Username, out _);
                 }
                 client.Disconnect();
-            }
-        }
-
-        private async Task<Packet?> ReadPacketAsync(GameClient client)
-        {
-            var opcodeByte = new byte[1];
-            var lengthBytes = new byte[2];
-
-            try
-            {
-                var stream = client.GetStream();
-
-                // Read opcode
-                if (await stream.ReadAsync(opcodeByte, 0, 1) != 1)
-                    return null;
-
-                // Read length for non-fixed size packets
-                if (await stream.ReadAsync(lengthBytes, 0, 2) != 2)
-                    return null;
-
-                // Fix endianness handling
-                var length = BinaryPrimitives.ReadUInt16BigEndian(lengthBytes);
-
-                // Add size validation
-                if (length > 5000) // Maximum reasonable packet size
-                {
-                    Console.WriteLine($"Received invalid packet length: {length}");
-                    return null;
-                }
-
-                var payload = new byte[length];
-
-                if (length > 0)
-                {
-                    var bytesRead = 0;
-                    while (bytesRead < length)
-                    {
-                        var read = await stream.ReadAsync(payload, bytesRead, length - bytesRead);
-                        if (read == 0) return null;
-                        bytesRead += read;
-                    }
-                }
-
-                // Add logging
-                Console.WriteLine($"Received packet - Opcode: {opcodeByte[0]}, Length: {length}");
-
-                return new Packet(opcodeByte[0], payload);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error reading packet: {ex.Message}");
-                return null;
             }
         }
     }

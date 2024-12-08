@@ -15,18 +15,12 @@ namespace GameServer.Handlers
 
         public async Task HandlePacketAsync(GameClient client, Packet packet)
         {
-            Console.WriteLine($"Handling packet with opcode: {packet.Opcode}");
-
             if (packet.Opcode == 14)
             {
+                // Just send a single byte 0 as response
                 var buffer = new StreamBuffer();
-                buffer.WriteU8(0);  // Confirmation byte
-                buffer.WriteU16(0); // Add length for protocol consistency
-
-                var response = buffer.ToArray();
-                Console.WriteLine($"Sending handshake response, length: {response.Length}");
-
-                await client.SendPacketAsync(response);
+                buffer.WriteU8(0);
+                await client.SendPacketAsync(buffer.ToArray());
                 Console.WriteLine("Sent handshake response");
             }
         }

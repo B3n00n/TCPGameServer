@@ -54,20 +54,11 @@ namespace GameServer
         {
             try
             {
-                // Add debug logging
-                Console.WriteLine($"Login packet payload length: {packet.Payload.Length}");
-                Console.WriteLine($"Raw payload: {BitConverter.ToString(packet.Payload)}");
+                var buffer = new StreamBuffer(client.GetStream());
 
-                var buffer = new StreamBuffer(packet.Payload);
-                var revision = (int)buffer.ReadU32();
-
-                // Read username with length debugging
-                var username = buffer.ReadString();
-                Console.WriteLine($"Username length: {username.Length}, Username: '{username}'");
-
-                // Read password with length debugging
-                var password = buffer.ReadString();
-                Console.WriteLine($"Password length: {password.Length}, Password: '{password}'");
+                var revision = await buffer.ReadU32();
+                var username = await buffer.ReadString();
+                var password = await buffer.ReadString();
 
                 Console.WriteLine($"Login attempt from '{username}' with revision {revision}");
 
@@ -87,14 +78,9 @@ namespace GameServer
                     client.IsAuthenticated = true;
 
                     var response = new StreamBuffer();
-                    response.WriteU8((byte)LoginType.ACCEPTABLE);  // Opcode
-                    response.WriteU16(1);  // Length (1 byte for rank)
-                    response.WriteU8((byte)user.Rank);  // Payload (rank)
-
-                    var responseData = response.ToArray();
-                    Console.WriteLine($"Sending successful login response, length: {responseData.Length}");
-                    await client.SendPacketAsync(responseData);
-                    Console.WriteLine($"Sent successful login response for '{username}'");
+                    response.WriteU8((byte)LoginType.ACCEPTABLE);
+                    response.WriteU8((byte)user.Rank);
+                    await client.SendPacketAsync(response.ToArray());
                 }
                 else
                 {
@@ -112,8 +98,7 @@ namespace GameServer
         private async Task SendLoginResponse(GameClient client, LoginType type)
         {
             var buffer = new StreamBuffer();
-            buffer.WriteU8((byte)type);    // Opcode
-            buffer.WriteU16(0);            // Length (no payload)
+            buffer.WriteU8((byte)type);
             await client.SendPacketAsync(buffer.ToArray());
         }
     }

@@ -1,17 +1,15 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Buffers.Binary;
+using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace GameServer.Packets
 {
     public class StreamBuffer
     {
-        private MemoryStream _stream;
-        private BinaryWriter _writer;
-        private BinaryReader _reader;
+        private readonly MemoryStream _stream;
+        private readonly BinaryReader _reader;
+        private readonly BinaryWriter _writer;
+        private readonly NetworkStream _networkStream;
 
         public StreamBuffer()
         {
@@ -20,9 +18,10 @@ namespace GameServer.Packets
             _reader = new BinaryReader(_stream);
         }
 
-        public StreamBuffer(byte[] data)
+        public StreamBuffer(NetworkStream networkStream)
         {
-            _stream = new MemoryStream(data);
+            _networkStream = networkStream;
+            _stream = new MemoryStream();
             _writer = new BinaryWriter(_stream);
             _reader = new BinaryReader(_stream);
         }
@@ -33,29 +32,43 @@ namespace GameServer.Packets
         public void WriteU32(uint value) => _writer.Write(BinaryPrimitives.ReverseEndianness(value));
         public void WriteString(string value)
         {
-            var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+            var bytes = Encoding.UTF8.GetBytes(value);
             WriteU32((uint)bytes.Length);
             _writer.Write(bytes);
         }
 
-        // Read methods
-        public byte ReadU8() => _reader.ReadByte();
-        public ushort ReadU16() => BinaryPrimitives.ReverseEndianness(_reader.ReadUInt16());
-        public uint ReadU32() => BinaryPrimitives.ReverseEndianness(_reader.ReadUInt32());
-        public string ReadString()
+        // Read methods from NetworkStream
+        public async Task<byte> ReadU8()
         {
-            var length = (int)ReadU32();
-            if (length <= 0) return "";
-            var bytes = _reader.ReadBytes(length);
-            return System.Text.Encoding.UTF8.GetString(bytes);
+            var buffer = new byte[1];
+            await _networkStream.ReadAsync(buffer, 0, 1);
+            return buffer[0];
         }
 
-        public byte[] ToArray()
+        public async Task<ushort> ReadU16()
         {
-            var position = _stream.Position;
-            var data = _stream.ToArray();
-            _stream.Position = position;
-            return data;
+            var buffer = new byte[2];
+            await _networkStream.ReadAsync(buffer, 0, 2);
+            return BinaryPrimitives.ReadUInt16BigEndian(buffer);
         }
+
+        public async Task<uint> ReadU32()
+        {
+            var buffer = new byte[4];
+            await _networkStream.ReadAsync(buffer, 0, 4);
+            return BinaryPrimitives.ReadUInt32BigEndian(buffer);
+        }
+
+        public async Task<string> ReadString()
+        {
+            var length = (int)await ReadU32();
+            if (length <= 0) return string.Empty;
+
+            var buffer = new byte[length];
+            await _networkStream.ReadAsync(buffer, 0, length);
+            return Encoding.UTF8.GetString(buffer);
+        }
+
+        public byte[] ToArray() => _stream.ToArray();
     }
 }

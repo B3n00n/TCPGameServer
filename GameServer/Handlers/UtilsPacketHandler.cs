@@ -18,17 +18,9 @@ namespace GameServer.Handlers
 
         public async Task HandlePacketAsync(GameClient client, Packet packet)
         {
-            if (!client.IsAuthenticated)
+            if (packet.Opcode == 3)
             {
-                Console.WriteLine($"Unauthenticated client attempting utility operation: {client.GetStream()}");
-                return;
-            }
-
-            switch (packet.Opcode)
-            {
-                case 3:
-                    await HandlePingAsync(client);
-                    break;
+                await HandlePingAsync(client);
             }
         }
 
@@ -40,7 +32,6 @@ namespace GameServer.Handlers
             {
                 var buffer = new StreamBuffer();
                 buffer.WriteU8(3);
-                buffer.WriteU16(0);
                 await client.SendPacketAsync(buffer.ToArray());
 
                 _stopwatch.Stop();
