@@ -25,15 +25,13 @@ namespace GameServer
         {
             try
             {
-                Console.WriteLine($"Sending {data.Length} bytes: {BitConverter.ToString(data)}");
                 await _stream.WriteAsync(data, 0, data.Length);
-                await _stream.FlushAsync(); // Make sure data is sent immediately
-                Console.WriteLine("Packet sent successfully");
+                await _stream.FlushAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending packet: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
+                throw;
             }
         }
 

@@ -1,9 +1,9 @@
-﻿using GameServer.Config;
-using GameServer.Handlers;
-using GameServer.Packets;
+﻿using System.Net.Sockets;
 using System.Collections.Concurrent;
 using System.Net;
-using System.Net.Sockets;
+using GameServer.Config;
+using GameServer.Handlers;
+using GameServer.Packets;
 
 namespace GameServer
 {
@@ -60,16 +60,7 @@ namespace GameServer
 
             try
             {
-                while (client.IsConnected)
-                {
-                    // Just read the opcode byte
-                    var opcodeByte = new byte[1];
-                    var bytesRead = await client.GetStream().ReadAsync(opcodeByte, 0, 1);
-                    if (bytesRead != 1) break;
-
-                    var packet = new Packet(opcodeByte[0], Array.Empty<byte>());
-                    await _packetDispatcher.DispatchPacketAsync(client, packet);
-                }
+                await ProcessClientPackets(client);
             }
             catch (Exception ex)
             {
@@ -84,6 +75,49 @@ namespace GameServer
                 }
                 client.Disconnect();
             }
+        }
+
+        private async Task ProcessClientPackets(GameClient client)
+        {
+            var stream = client.GetStream();
+            var opcodeBuffer = new byte[1];
+
+            while (client.IsConnected)
+            {
+                try
+                {
+                    // Read opcode
+                    int bytesRead = await stream.ReadAsync(opcodeBuffer, 0, 1);
+                    if (bytesRead != 1) break;
+
+                    byte opcode = opcodeBuffer[0];
+                    var packet = new Packet(opcode, Array.Empty<byte>());
+
+                    await _packetDispatcher.DispatchPacketAsync(client, packet);
+                }
+                catch (IOException) // Clean disconnection
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing packet: {ex.Message}");
+                    break;
+                }
+            }
+        }
+
+        public void Stop()
+        {
+            _isRunning = false;
+            _listener.Stop();
+
+            // Disconnect all clients
+            foreach (var client in _clients.Values)
+            {
+                client.Disconnect();
+            }
+            _clients.Clear();
         }
     }
 }
