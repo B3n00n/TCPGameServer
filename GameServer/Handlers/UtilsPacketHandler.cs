@@ -32,6 +32,7 @@ namespace GameServer.Handlers
             {
                 var buffer = new StreamBuffer();
                 buffer.WriteU8(3);
+                buffer.WriteU16(0);
                 await client.SendPacketAsync(buffer.ToArray());
 
                 _stopwatch.Stop();
