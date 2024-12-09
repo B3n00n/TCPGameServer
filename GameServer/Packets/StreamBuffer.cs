@@ -37,6 +37,8 @@ namespace GameServer.Packets
             _writer.Write(bytes);
         }
 
+        public void WriteBytes(byte[] bytes) => _writer.Write(bytes, 0, bytes.Length);
+
         // Read methods from NetworkStream
         public async Task<byte> ReadU8()
         {
