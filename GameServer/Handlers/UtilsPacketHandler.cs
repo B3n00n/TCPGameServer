@@ -1,11 +1,11 @@
 ﻿using GameServer.Packets;
 using System.Diagnostics;
+using System.Net.Sockets;
 
 namespace GameServer.Handlers
 {
-    public class UtilsPacketHandler : IPacketHandler
+    public class UtilsPacketHandler : PacketHandlerBase
     {
-        private static readonly byte[] HandledOpcodes = { 3 };  // Ping opcode
         private readonly Stopwatch _stopwatch;
         private const int MAX_PING = 10000;
 
@@ -14,38 +14,21 @@ namespace GameServer.Handlers
             _stopwatch = new Stopwatch();
         }
 
-        public IEnumerable<byte> GetHandledOpcodes() => HandledOpcodes;
-
-        public async Task HandlePacketAsync(GameClient client, Packet packet)
-        {
-            if (packet.Opcode == 3)
-            {
-                await HandlePingAsync(client);
-            }
-        }
-
-        private async Task HandlePingAsync(GameClient client)
+        public async Task Handle(NetworkStream stream)
         {
             _stopwatch.Restart();
 
-            try
-            {
-                var buffer = new StreamBuffer();
-                buffer.WriteU8(3);
-                buffer.WriteU16(0);
-                await client.SendPacketAsync(buffer.ToArray());
+            var response = CreateResponsePacket();
+            response.WriteU8(3);
+            response.WriteU16(0);
+            await SendPacketAsync(stream, response.ToArray());
 
-                _stopwatch.Stop();
-                var pingTime = _stopwatch.ElapsedMilliseconds;
+            _stopwatch.Stop();
+            var pingTime = _stopwatch.ElapsedMilliseconds;
 
-                if (pingTime > MAX_PING)
-                {
-                    Console.WriteLine($"High latency detected for {client.Username}: {pingTime}ms");
-                }
-            }
-            catch (Exception ex)
+            if (pingTime > MAX_PING)
             {
-                Console.WriteLine($"Error handling ping: {ex.Message}");
+                Console.WriteLine($"High latency detected: {pingTime}ms");
             }
         }
     }

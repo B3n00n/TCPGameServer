@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using GameServer.Packets;
+using System.Net.Sockets;
 
 namespace GameServer
 {
@@ -6,33 +7,31 @@ namespace GameServer
     {
         private readonly TcpClient _tcpClient;
         private readonly NetworkStream _stream;
+        private readonly PacketReader _reader;
+        private readonly PacketWriter _writer;
 
         public bool IsConnected => _tcpClient.Connected;
-        public string Username { get; set; }
-        public bool IsAuthenticated { get; set; }
+        public string Username { get; private set; }
+        public bool IsAuthenticated { get; private set; }
 
         public GameClient(TcpClient tcpClient)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
+            _reader = new PacketReader(_stream);
+            _writer = new PacketWriter();
             Username = string.Empty;
             IsAuthenticated = false;
         }
 
         public NetworkStream GetStream() => _stream;
+        public PacketReader GetReader() => _reader;
+        public PacketWriter GetWriter() => _writer;
 
-        public async Task SendPacketAsync(byte[] data)
+        public void SetAuthenticated(string username)
         {
-            try
-            {
-                await _stream.WriteAsync(data, 0, data.Length);
-                await _stream.FlushAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error sending packet: {ex.Message}");
-                throw;
-            }
+            Username = username;
+            IsAuthenticated = true;
         }
 
         public void Disconnect()
@@ -40,7 +39,7 @@ namespace GameServer
             try
             {
                 _tcpClient.Close();
-                _stream.Close();
+                _stream.Dispose();
             }
             catch (Exception ex)
             {

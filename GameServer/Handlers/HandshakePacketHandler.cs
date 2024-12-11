@@ -1,28 +1,16 @@
 ﻿using GameServer.Packets;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.Sockets;
+
 
 namespace GameServer.Handlers
 {
-    public class HandshakePacketHandler : IPacketHandler
+    public class HandshakePacketHandler : PacketHandlerBase
     {
-        private static readonly byte[] HandledOpcodes = { 14 };
-
-        public IEnumerable<byte> GetHandledOpcodes() => HandledOpcodes;
-
-        public async Task HandlePacketAsync(GameClient client, Packet packet)
+        public async Task Handle(NetworkStream stream)
         {
-            if (packet.Opcode == 14)
-            {
-                // Just send a single byte 0 as response
-                var buffer = new StreamBuffer();
-                buffer.WriteU8(0);
-                await client.SendPacketAsync(buffer.ToArray());
-                Console.WriteLine("Sent handshake response");
-            }
+            var response = CreateResponsePacket();
+            response.WriteU8(0);
+            await SendPacketAsync(stream, response.ToArray());
         }
     }
 }

@@ -1,5 +1,5 @@
-﻿using GameServer.Config;
-using GameServer.Packets;
+﻿using GameServer.Packets;
+using System.Net.Sockets;
 
 namespace GameServer
 {
@@ -30,9 +30,8 @@ namespace GameServer
         LOGIN_SERVER_OFFLINE = 22
     }
 
-    public class LoginPacketHandler : IPacketHandler
+    public class LoginPacketHandler : PacketHandlerBase
     {
-        private static readonly byte[] HandledOpcodes = { 10 };
         private readonly AuthService _authService;
 
         public LoginPacketHandler(AuthService authService)
@@ -40,66 +39,24 @@ namespace GameServer
             _authService = authService;
         }
 
-        public IEnumerable<byte> GetHandledOpcodes() => HandledOpcodes;
-
-        public async Task HandlePacketAsync(GameClient client, Packet packet)
+        public async Task<(bool Success, string Username)> Handle(NetworkStream stream, PacketReader readBuffer)
         {
-            if (packet.Opcode == 10)
+            var revision = await readBuffer.ReadU32();
+            var username = await readBuffer.ReadString();
+            var password = await readBuffer.ReadString();
+
+            var (status, user) = await _authService.AuthenticateAsync(username, password, revision);
+
+            var response = CreateResponsePacket();
+            response.WriteU8((byte)status);
+
+            if (status == LoginType.ACCEPTABLE && user != null)
             {
-                await HandleLoginRequest(client, packet);
+                response.WriteU8((byte)user.Rank);
             }
-        }
 
-        private async Task HandleLoginRequest(GameClient client, Packet packet)
-        {
-            try
-            {
-                var buffer = new StreamBuffer(client.GetStream());
-
-                var revision = await buffer.ReadU32();
-                var username = await buffer.ReadString();
-                var password = await buffer.ReadString();
-
-                Console.WriteLine($"Login attempt from '{username}' with revision {revision}");
-
-                if (revision != GameConfig.REVISION)
-                {
-                    Console.WriteLine($"Revision mismatch. Expected {GameConfig.REVISION}, got {revision}");
-                    await SendLoginResponse(client, LoginType.REVISION_MISMATCH);
-                    return;
-                }
-
-                var (status, user) = await _authService.AuthenticateAsync(username, password);
-                Console.WriteLine($"Login status for '{username}': {status}");
-
-                if (status == LoginType.ACCEPTABLE && user != null)
-                {
-                    client.Username = username;
-                    client.IsAuthenticated = true;
-
-                    var response = new StreamBuffer();
-                    response.WriteU8((byte)LoginType.ACCEPTABLE);
-                    response.WriteU8((byte)user.Rank);
-                    await client.SendPacketAsync(response.ToArray());
-                }
-                else
-                {
-                    await SendLoginResponse(client, status);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error handling login: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                await SendLoginResponse(client, LoginType.COULD_NOT_COMPLETE_LOGIN);
-            }
-        }
-
-        private async Task SendLoginResponse(GameClient client, LoginType type)
-        {
-            var buffer = new StreamBuffer();
-            buffer.WriteU8((byte)type);
-            await client.SendPacketAsync(buffer.ToArray());
+            await SendPacketAsync(stream, response.ToArray());
+            return (status == LoginType.ACCEPTABLE, username);
         }
     }
 }

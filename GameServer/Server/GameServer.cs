@@ -1,18 +1,23 @@
-﻿using System.Net.Sockets;
-using System.Collections.Concurrent;
-using System.Net;
-using GameServer.Config;
+﻿using GameServer.Config;
 using GameServer.Handlers;
-using GameServer.Packets;
+using System.Collections.Concurrent;
+using System.Net.Sockets;
+using System.Net;
 
 namespace GameServer
 {
     public class GameServer
     {
         private readonly TcpListener _listener;
-        private readonly PacketDispatcher _packetDispatcher;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
         private readonly AuthService _authService;
+
+        #region Packet Handlers
+        private readonly HandshakePacketHandler _handshakeHandler;
+        private readonly LoginPacketHandler _loginHandler;
+        private readonly UtilsPacketHandler _utilsHandler;
+        #endregion
+
         private bool _isRunning;
 
         public GameServer()
@@ -23,34 +28,10 @@ namespace GameServer
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
             _authService = new AuthService(db);
 
-            var handlers = new IPacketHandler[]
-            {
-                new HandshakePacketHandler(),
-                new LoginPacketHandler(_authService),
-                new UtilsPacketHandler(),
-            };
-
-            _packetDispatcher = new PacketDispatcher(handlers);
-        }
-
-        public async Task StartAsync()
-        {
-            _isRunning = true;
-            _listener.Start();
-            Console.WriteLine($"Server started on port {GameConfig.PORT}");
-
-            while (_isRunning)
-            {
-                try
-                {
-                    var client = await _listener.AcceptTcpClientAsync();
-                    _ = HandleClientAsync(client);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error accepting client: {ex.Message}");
-                }
-            }
+            // Initialize all packet handlers
+            _handshakeHandler = new HandshakePacketHandler();
+            _loginHandler = new LoginPacketHandler(_authService);
+            _utilsHandler = new UtilsPacketHandler();
         }
 
         private async Task HandleClientAsync(TcpClient tcpClient)
@@ -79,23 +60,33 @@ namespace GameServer
 
         private async Task ProcessClientPackets(GameClient client)
         {
-            var stream = client.GetStream();
-            var opcodeBuffer = new byte[1];
-
             while (client.IsConnected)
             {
                 try
                 {
-                    // Read opcode
-                    int bytesRead = await stream.ReadAsync(opcodeBuffer, 0, 1);
-                    if (bytesRead != 1) break;
+                    var opcode = await client.GetReader().ReadU8();
 
-                    byte opcode = opcodeBuffer[0];
-                    var packet = new Packet(opcode, Array.Empty<byte>());
+                    switch (opcode)
+                    {
+                        case 14: // Handshake
+                            await _handshakeHandler.Handle(client.GetStream());
+                            break;
 
-                    await _packetDispatcher.DispatchPacketAsync(client, packet);
+                        case 10: // Login
+                            var (success, username) = await _loginHandler.Handle(client.GetStream(), client.GetReader());
+                            if (success)
+                            {
+                                client.SetAuthenticated(username);
+                                _clients.TryAdd(username, client);
+                            }
+                            break;
+
+                        case 3:  // Ping
+                            await _utilsHandler.Handle(client.GetStream());
+                            break;
+                    }
                 }
-                catch (IOException) // Clean disconnection
+                catch (IOException)
                 {
                     break;
                 }
@@ -107,12 +98,31 @@ namespace GameServer
             }
         }
 
+        public async Task StartAsync()
+        {
+            _isRunning = true;
+            _listener.Start();
+            Console.WriteLine($"Server started on port {GameConfig.PORT}");
+
+            while (_isRunning)
+            {
+                try
+                {
+                    var tcpClient = await _listener.AcceptTcpClientAsync();
+                    _ = HandleClientAsync(tcpClient);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error accepting client: {ex.Message}");
+                }
+            }
+        }
+
         public void Stop()
         {
             _isRunning = false;
             _listener.Stop();
 
-            // Disconnect all clients
             foreach (var client in _clients.Values)
             {
                 client.Disconnect();
