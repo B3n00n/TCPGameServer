@@ -30,7 +30,7 @@ namespace GameServer
         LOGIN_SERVER_OFFLINE = 22
     }
 
-    public class LoginPacketHandler : PacketHandlerBase
+    public class LoginPacketHandler
     {
         private readonly AuthService _authService;
 
@@ -47,7 +47,7 @@ namespace GameServer
 
             var (status, user) = await _authService.AuthenticateAsync(username, password, revision);
 
-            var response = CreateResponsePacket();
+            var response = new PacketWriter();
             response.WriteU8((byte)status);
 
             if (status == LoginType.ACCEPTABLE && user != null)
@@ -55,7 +55,7 @@ namespace GameServer
                 response.WriteU8((byte)user.Rank);
             }
 
-            await SendPacketAsync(stream, response.ToArray());
+            await stream.WriteAsync(response.ToArray());
             return (status == LoginType.ACCEPTABLE, username);
         }
     }

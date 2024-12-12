@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace GameServer.Handlers
 {
-    public class UtilsPacketHandler : PacketHandlerBase
+    public class UtilsPacketHandler
     {
         private readonly Stopwatch _stopwatch;
         private const int MAX_PING = 10000;
@@ -18,10 +18,10 @@ namespace GameServer.Handlers
         {
             _stopwatch.Restart();
 
-            var response = CreateResponsePacket();
+            var response = new PacketWriter();
             response.WriteU8(3);
             response.WriteU16(0);
-            await SendPacketAsync(stream, response.ToArray());
+            await stream.WriteAsync(response.ToArray());
 
             _stopwatch.Stop();
             var pingTime = _stopwatch.ElapsedMilliseconds;

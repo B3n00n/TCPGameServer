@@ -4,13 +4,13 @@ using System.Net.Sockets;
 
 namespace GameServer.Handlers
 {
-    public class HandshakePacketHandler : PacketHandlerBase
+    public class HandshakePacketHandler
     {
         public async Task Handle(NetworkStream stream)
         {
-            var response = CreateResponsePacket();
+            var response = new PacketWriter();
             response.WriteU8(0);
-            await SendPacketAsync(stream, response.ToArray());
+            await stream.WriteAsync(response.ToArray());
         }
     }
 }
