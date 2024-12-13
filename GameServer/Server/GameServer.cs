@@ -66,14 +66,16 @@ namespace GameServer
                 {
                     var opcode = await client.GetReader().ReadU8();
 
+                    Console.WriteLine($"Recieved opcode: {opcode}");
+
                     switch (opcode)
                     {
                         case 14: // Handshake
-                            await _handshakeHandler.Handle(client.GetStream());
+                            await _handshakeHandler.HandleHandshake(client.GetStream());
                             break;
 
                         case 10: // Login
-                            var (success, username) = await _loginHandler.Handle(client.GetStream(), client.GetReader());
+                            var (success, username) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader());
                             if (success)
                             {
                                 client.SetAuthenticated(username);
@@ -82,7 +84,7 @@ namespace GameServer
                             break;
 
                         case 3:  // Ping
-                            await _utilsHandler.Handle(client.GetStream());
+                            await _utilsHandler.HandlePing(client.GetStream());
                             break;
                     }
                 }

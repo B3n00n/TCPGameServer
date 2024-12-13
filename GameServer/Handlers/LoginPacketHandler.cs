@@ -39,7 +39,7 @@ namespace GameServer
             _authService = authService;
         }
 
-        public async Task<(bool Success, string Username)> Handle(NetworkStream stream, PacketReader readBuffer)
+        public async Task<(bool Success, string Username)> HandleLogin(NetworkStream stream, PacketReader readBuffer)
         {
             var revision = await readBuffer.ReadU32();
             var username = await readBuffer.ReadString();

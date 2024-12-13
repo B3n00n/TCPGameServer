@@ -6,7 +6,7 @@ namespace GameServer.Handlers
 {
     public class HandshakePacketHandler
     {
-        public async Task Handle(NetworkStream stream)
+        public async Task HandleHandshake(NetworkStream stream)
         {
             var response = new PacketWriter();
             response.WriteU8(0);

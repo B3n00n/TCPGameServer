@@ -14,7 +14,7 @@ namespace GameServer.Handlers
             _stopwatch = new Stopwatch();
         }
 
-        public async Task Handle(NetworkStream stream)
+        public async Task HandlePing(NetworkStream stream)
         {
             _stopwatch.Restart();
 
