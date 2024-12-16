@@ -1,21 +1,19 @@
-﻿using GameServer;
-using GameServer.Packets;
+﻿using GameServer.Packets;
+using GameServer;
 using System.Collections.Concurrent;
 
 public class PlayerPacketHandler
 {
     private readonly BitBuffer headerBuffer;
     private readonly BitBuffer payloadBuffer;
-    private readonly byte[] finalPacket;
 
     public PlayerPacketHandler()
     {
         headerBuffer = new BitBuffer(3);    // Fixed size for opcode + length
         payloadBuffer = new BitBuffer(256); // Typical payload size
-        finalPacket = new byte[1024];       // Max packet size
     }
 
-    private int CreatePacket(byte opcode, Action<BitBuffer> writePayload)
+    private byte[] CreatePacket(byte opcode, Action<BitBuffer> writePayload)
     {
         payloadBuffer.Reset();
         writePayload(payloadBuffer);
@@ -26,10 +24,11 @@ public class PlayerPacketHandler
         headerBuffer.WriteBits(16, payload.Length);
         var header = headerBuffer.ToArray();
 
+        var finalPacket = new byte[header.Length + payload.Length];
         Buffer.BlockCopy(header, 0, finalPacket, 0, header.Length);
         Buffer.BlockCopy(payload, 0, finalPacket, header.Length, payload.Length);
 
-        return header.Length + payload.Length;
+        return finalPacket;
     }
 
     public async Task SendPlayerSpawn(GameClient newPlayer, ConcurrentDictionary<string, GameClient> clients)
@@ -41,7 +40,7 @@ public class PlayerPacketHandler
             {
                 if (existingClient != newPlayer && existingClient.PlayerData.IsAuthenticated)
                 {
-                    int packetSize = CreatePacket(29, buffer =>
+                    var existingPlayerPacket = CreatePacket(29, buffer =>
                     {
                         buffer.WriteBits(4, 1);  // Spawn mask
                         buffer.WriteBits(11, existingClient.PlayerData.Index);
@@ -51,12 +50,12 @@ public class PlayerPacketHandler
                         buffer.WriteBits(3, existingClient.PlayerData.Direction);
                     });
 
-                    await newPlayer.GetStream().WriteAsync(finalPacket, 0, packetSize);
+                    await newPlayer.GetStream().WriteAsync(existingPlayerPacket).ConfigureAwait(false);
                 }
             }
 
             // Broadcast new player to others
-            int newPlayerPacketSize = CreatePacket(29, buffer =>
+            var newPlayerPacket = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 1);  // Spawn mask
                 buffer.WriteBits(11, newPlayer.PlayerData.Index);
@@ -66,12 +65,17 @@ public class PlayerPacketHandler
                 buffer.WriteBits(3, newPlayer.PlayerData.Direction);
             });
 
+            var tasks = new List<ValueTask>();
             foreach (var client in clients.Values)
             {
                 if (client != newPlayer && client.PlayerData.IsAuthenticated)
                 {
-                    await client.GetStream().WriteAsync(finalPacket, 0, newPlayerPacketSize);
+                    tasks.Add(client.GetStream().WriteAsync(newPlayerPacket));
                 }
+            }
+            foreach (var task in tasks)
+            {
+                await task.ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -84,23 +88,23 @@ public class PlayerPacketHandler
     {
         try
         {
-            int packetSize = CreatePacket(29, buffer =>
+            var logoutPacket = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 2);  // Remove mask
                 buffer.WriteBits(11, sourceClient.PlayerData.Index);
             });
 
+            var tasks = new List<ValueTask>();
             foreach (var client in clients.Values)
             {
                 if (client != sourceClient && client.PlayerData.IsAuthenticated)
                 {
-                    await client.GetStream().WriteAsync(finalPacket, 0, packetSize);
+                    tasks.Add(client.GetStream().WriteAsync(logoutPacket));
                 }
             }
-
-            if (!string.IsNullOrEmpty(sourceClient.PlayerData.Username))
+            foreach (var task in tasks)
             {
-                clients.TryRemove(sourceClient.PlayerData.Username, out _);
+                await task.ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -122,7 +126,7 @@ public class PlayerPacketHandler
             sourceClient.PlayerData.Direction = direction;
             sourceClient.PlayerData.MovementType = movementType;
 
-            int packetSize = CreatePacket(29, buffer =>
+            var movementPacket = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 5);  // Movement mask
                 buffer.WriteBits(11, sourceClient.PlayerData.Index);
@@ -132,12 +136,17 @@ public class PlayerPacketHandler
                 buffer.WriteBits(3, movementType);
             });
 
+            var tasks = new List<ValueTask>();
             foreach (var client in clients.Values)
             {
                 if (client != sourceClient && client.PlayerData.IsAuthenticated)
                 {
-                    await client.GetStream().WriteAsync(finalPacket, 0, packetSize);
+                    tasks.Add(client.GetStream().WriteAsync(movementPacket));
                 }
+            }
+            foreach (var task in tasks)
+            {
+                await task.ConfigureAwait(false);
             }
         }
         catch (Exception ex)
