@@ -53,8 +53,16 @@ namespace GameServer
             {
                 if (!string.IsNullOrEmpty(client.PlayerData.Username))
                 {
-                    await _playerHandler.HandleLogout(client, _clients);
-                    _authService.RemoveOnlinePlayer(client.PlayerData.Username);
+                    _clients.TryRemove(client.PlayerData.Username, out _);
+
+                    try
+                    {
+                        await _playerHandler.HandleLogout(client, _clients);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during logout notification: {ex.Message}");
+                    }
                 }
                 client.Disconnect();
             }
@@ -70,7 +78,7 @@ namespace GameServer
 
                     switch (opcode)
                     {
-                        case 2:
+                        case 2: // Player
                             if (client.PlayerData.IsAuthenticated)
                                 await _playerHandler.HandleMovement(client, _clients, client.GetReader());
                             break;
@@ -79,7 +87,7 @@ namespace GameServer
                             break;
 
                         case 10: // Login
-                            var (success, username) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader());
+                            var (success, username) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
                             if (success)
                             {
                                 client.SetAuthenticated(username);

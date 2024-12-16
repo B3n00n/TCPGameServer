@@ -1,85 +1,76 @@
-﻿using GameServer.Packets;
-using GameServer;
+﻿using GameServer;
+using GameServer.Packets;
 using System.Collections.Concurrent;
-using System.Text;
 
 public class PlayerPacketHandler
 {
+    private readonly BitBuffer headerBuffer;
+    private readonly BitBuffer payloadBuffer;
+    private readonly byte[] finalPacket;
+
+    public PlayerPacketHandler()
+    {
+        headerBuffer = new BitBuffer(3);    // Fixed size for opcode + length
+        payloadBuffer = new BitBuffer(256); // Typical payload size
+        finalPacket = new byte[1024];       // Max packet size
+    }
+
+    private int CreatePacket(byte opcode, Action<BitBuffer> writePayload)
+    {
+        payloadBuffer.Reset();
+        writePayload(payloadBuffer);
+        var payload = payloadBuffer.ToArray();
+
+        headerBuffer.Reset();
+        headerBuffer.WriteBits(8, opcode);
+        headerBuffer.WriteBits(16, payload.Length);
+        var header = headerBuffer.ToArray();
+
+        Buffer.BlockCopy(header, 0, finalPacket, 0, header.Length);
+        Buffer.BlockCopy(payload, 0, finalPacket, header.Length, payload.Length);
+
+        return header.Length + payload.Length;
+    }
+
     public async Task SendPlayerSpawn(GameClient newPlayer, ConcurrentDictionary<string, GameClient> clients)
     {
         try
         {
-            // First, tell all existing players about the new player
-            var spawnPacket = new PacketWriter();
-            spawnPacket.WriteU8(29);  // Opcode
+            // Send existing players to new player
+            foreach (var existingClient in clients.Values)
+            {
+                if (existingClient != newPlayer && existingClient.PlayerData.IsAuthenticated)
+                {
+                    int packetSize = CreatePacket(29, buffer =>
+                    {
+                        buffer.WriteBits(4, 1);  // Spawn mask
+                        buffer.WriteBits(11, existingClient.PlayerData.Index);
+                        buffer.WriteString(existingClient.PlayerData.Username);
+                        buffer.WriteBits(16, (int)existingClient.PlayerData.Position.X);
+                        buffer.WriteBits(16, (int)existingClient.PlayerData.Position.Y);
+                        buffer.WriteBits(3, existingClient.PlayerData.Direction);
+                    });
 
-            // Correctly calculate the length
-            // 2 (mask) + 2 (index) + 4 (username length) + username length + 2 (x) + 2 (y) + 1 (direction)
-            var usernameBytes = Encoding.UTF8.GetBytes(newPlayer.PlayerData.Username);
-            var packetLength = (ushort)(2 + 2 + 4 + usernameBytes.Length + 2 + 2 + 1);
+                    await newPlayer.GetStream().WriteAsync(finalPacket, 0, packetSize);
+                }
+            }
 
-            spawnPacket.WriteU16(packetLength);
-            spawnPacket.WriteU16(1);         // Spawn mask
-            spawnPacket.WriteU16((ushort)newPlayer.PlayerData.Index);
-
-            // Write username length as U32 and then username bytes
-            spawnPacket.WriteString(newPlayer.PlayerData.Username);
-
-            spawnPacket.WriteU16((ushort)newPlayer.PlayerData.Position.X);
-            spawnPacket.WriteU16((ushort)newPlayer.PlayerData.Position.Y);
-            spawnPacket.WriteU8(newPlayer.PlayerData.Direction);
-
-            var packetData = spawnPacket.ToArray();
+            // Broadcast new player to others
+            int newPlayerPacketSize = CreatePacket(29, buffer =>
+            {
+                buffer.WriteBits(4, 1);  // Spawn mask
+                buffer.WriteBits(11, newPlayer.PlayerData.Index);
+                buffer.WriteString(newPlayer.PlayerData.Username);
+                buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.X);
+                buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.Y);
+                buffer.WriteBits(3, newPlayer.PlayerData.Direction);
+            });
 
             foreach (var client in clients.Values)
             {
                 if (client != newPlayer && client.PlayerData.IsAuthenticated)
                 {
-                    await client.GetStream().WriteAsync(packetData);
-                }
-            }
-
-            // Then, tell the new player about all existing players
-            foreach (var existingPlayer in clients.Values)
-            {
-                if (existingPlayer != newPlayer && existingPlayer.PlayerData.IsAuthenticated)
-                {
-                    // Send spawn packet first
-                    var existingPlayerSpawn = new PacketWriter();
-                    existingPlayerSpawn.WriteU8(29);
-
-                    var existingUsernameBytes = Encoding.UTF8.GetBytes(existingPlayer.PlayerData.Username);
-                    var existingPacketLength = (ushort)(2 + 2 + 4 + existingUsernameBytes.Length + 2 + 2 + 1);
-
-                    existingPlayerSpawn.WriteU16(existingPacketLength);
-                    existingPlayerSpawn.WriteU16(1);  // Spawn mask
-                    existingPlayerSpawn.WriteU16((ushort)existingPlayer.PlayerData.Index);
-
-                    // Write username length as U32 and then username bytes
-                    existingPlayerSpawn.WriteString(existingPlayer.PlayerData.Username);
-
-                    existingPlayerSpawn.WriteU16((ushort)existingPlayer.PlayerData.Position.X);
-                    existingPlayerSpawn.WriteU16((ushort)existingPlayer.PlayerData.Position.Y);
-                    existingPlayerSpawn.WriteU8(existingPlayer.PlayerData.Direction);
-
-                    await newPlayer.GetStream().WriteAsync(existingPlayerSpawn.ToArray());
-
-                    // Then immediately send a movement update with current position
-                    var movementUpdate = new PacketWriter();
-                    movementUpdate.WriteU8(29);
-
-                    // Calculate movement update packet length
-                    var movementPacketLength = (ushort)(2 + 2 + 1 + 2 + 2 + 1);
-                    movementUpdate.WriteU16(movementPacketLength);
-
-                    movementUpdate.WriteU16(5);  // Movement update mask
-                    movementUpdate.WriteU16((ushort)existingPlayer.PlayerData.Index);
-                    movementUpdate.WriteU8(existingPlayer.PlayerData.Direction);
-                    movementUpdate.WriteU16((ushort)existingPlayer.PlayerData.Position.X);
-                    movementUpdate.WriteU16((ushort)existingPlayer.PlayerData.Position.Y);
-                    movementUpdate.WriteU8(existingPlayer.PlayerData.MovementType);
-
-                    await newPlayer.GetStream().WriteAsync(movementUpdate.ToArray());
+                    await client.GetStream().WriteAsync(finalPacket, 0, newPlayerPacketSize);
                 }
             }
         }
@@ -93,25 +84,20 @@ public class PlayerPacketHandler
     {
         try
         {
-            // Send player removal packet to all other clients
-            var packet = new PacketWriter();
-            packet.WriteU8(29);         // Player update opcode
-            packet.WriteU16(4);         // Length: mask(2) + index(2)
-            packet.WriteU16(2);         // Remove player mask
-            packet.WriteU16((ushort)sourceClient.PlayerData.Index);
-
-            var packetData = packet.ToArray();
-            Console.WriteLine($"Sending player removal packet - Index: {sourceClient.PlayerData.Index}");
+            int packetSize = CreatePacket(29, buffer =>
+            {
+                buffer.WriteBits(4, 2);  // Remove mask
+                buffer.WriteBits(11, sourceClient.PlayerData.Index);
+            });
 
             foreach (var client in clients.Values)
             {
                 if (client != sourceClient && client.PlayerData.IsAuthenticated)
                 {
-                    await client.GetStream().WriteAsync(packetData);
+                    await client.GetStream().WriteAsync(finalPacket, 0, packetSize);
                 }
             }
 
-            // Remove from clients dictionary if present
             if (!string.IsNullOrEmpty(sourceClient.PlayerData.Username))
             {
                 clients.TryRemove(sourceClient.PlayerData.Username, out _);
@@ -136,22 +122,21 @@ public class PlayerPacketHandler
             sourceClient.PlayerData.Direction = direction;
             sourceClient.PlayerData.MovementType = movementType;
 
-            // Broadcast movement to other clients
-            var response = new PacketWriter();
-            response.WriteU8(29);         // Player update opcode
-            response.WriteU16(10);        // Payload length
-            response.WriteU16(5);         // Movement mask
-            response.WriteU16((ushort)sourceClient.PlayerData.Index);
-            response.WriteU8(direction);
-            response.WriteU16(x);
-            response.WriteU16(y);
-            response.WriteU8(movementType);
+            int packetSize = CreatePacket(29, buffer =>
+            {
+                buffer.WriteBits(4, 5);  // Movement mask
+                buffer.WriteBits(11, sourceClient.PlayerData.Index);
+                buffer.WriteBits(3, direction);
+                buffer.WriteBits(16, x);
+                buffer.WriteBits(16, y);
+                buffer.WriteBits(3, movementType);
+            });
 
             foreach (var client in clients.Values)
             {
                 if (client != sourceClient && client.PlayerData.IsAuthenticated)
                 {
-                    await client.GetStream().WriteAsync(response.ToArray());
+                    await client.GetStream().WriteAsync(finalPacket, 0, packetSize);
                 }
             }
         }

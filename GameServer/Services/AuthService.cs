@@ -6,15 +6,13 @@ using GameServer.Config;
 public class AuthService
 {
     private readonly DatabaseContext _db;
-    private readonly ConcurrentDictionary<string, bool> _onlinePlayers;
 
     public AuthService(DatabaseContext db)
     {
         _db = db;
-        _onlinePlayers = new ConcurrentDictionary<string, bool>();
     }
 
-    public async Task<(LoginType Status, User? User)> AuthenticateAsync(string username, string password, uint revision)
+    public async Task<(LoginType Status, User? User)> AuthenticateAsync(string username, string password, uint revision, ConcurrentDictionary<string, GameClient> activeClients)
     {
         if (revision != GameConfig.REVISION)
             return (LoginType.REVISION_MISMATCH, null);
@@ -29,18 +27,12 @@ public class AuthService
         if (user.IsBanned)
             return (LoginType.ACCOUNT_BANNED, null);
 
-        if (_onlinePlayers.ContainsKey(username))
+        if (activeClients.ContainsKey(username))
             return (LoginType.ALREADY_ONLINE, null);
 
         if (password != user.Password)
             return (LoginType.INVALID_CREDENTIALS, null);
 
-        _onlinePlayers.TryAdd(username, true);
         return (LoginType.ACCEPTABLE, user);
-    }
-
-    public void RemoveOnlinePlayer(string username)
-    {
-        _onlinePlayers.TryRemove(username, out _);
     }
 }

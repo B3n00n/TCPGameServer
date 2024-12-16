@@ -1,4 +1,5 @@
 ﻿using GameServer.Packets;
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 
 namespace GameServer
@@ -39,13 +40,13 @@ namespace GameServer
             _authService = authService;
         }
 
-        public async Task<(bool Success, string Username)> HandleLogin(NetworkStream stream, PacketReader readBuffer)
+        public async Task<(bool Success, string Username)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
         {
             var revision = await readBuffer.ReadU32();
             var username = await readBuffer.ReadString();
             var password = await readBuffer.ReadString();
 
-            var (status, user) = await _authService.AuthenticateAsync(username, password, revision);
+            var (status, user) = await _authService.AuthenticateAsync(username, password, revision, activeClients);
 
             var response = new PacketWriter();
             response.WriteU8((byte)status);
