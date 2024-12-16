@@ -42,5 +42,10 @@ namespace GameServer.Packets
             _stream.SetLength(0);
             _stream.Position = 0;
         }
+
+        public void WriteBytes(byte[] data)
+        {
+            _writer.Write(data);
+        }
     }
 }

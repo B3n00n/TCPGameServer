@@ -16,6 +16,7 @@ namespace GameServer
         private readonly HandshakePacketHandler _handshakeHandler;
         private readonly LoginPacketHandler _loginHandler;
         private readonly UtilsPacketHandler _utilsHandler;
+        private readonly PlayerPacketHandler _playerHandler;
         #endregion
 
         private bool _isRunning;
@@ -32,6 +33,7 @@ namespace GameServer
             _handshakeHandler = new HandshakePacketHandler();
             _loginHandler = new LoginPacketHandler(_authService);
             _utilsHandler = new UtilsPacketHandler();
+            _playerHandler = new PlayerPacketHandler();
         }
 
         private async Task HandleClientAsync(TcpClient tcpClient)
@@ -49,10 +51,10 @@ namespace GameServer
             }
             finally
             {
-                if (!string.IsNullOrEmpty(client.Username))
+                if (!string.IsNullOrEmpty(client.PlayerData.Username))
                 {
-                    _authService.RemoveOnlinePlayer(client.Username);
-                    _clients.TryRemove(client.Username, out _);
+                    await _playerHandler.HandleLogout(client, _clients);
+                    _authService.RemoveOnlinePlayer(client.PlayerData.Username);
                 }
                 client.Disconnect();
             }
@@ -66,12 +68,14 @@ namespace GameServer
                 {
                     var opcode = await client.GetReader().ReadU8();
 
-                    Console.WriteLine($"Recieved opcode: {opcode}");
-
                     switch (opcode)
                     {
-                        case 14: // Handshake
-                            await _handshakeHandler.HandleHandshake(client.GetStream());
+                        case 2:
+                            if (client.PlayerData.IsAuthenticated)
+                                await _playerHandler.HandleMovement(client, _clients, client.GetReader());
+                            break;
+                        case 3:  // Ping
+                            await _utilsHandler.HandlePing(client.GetStream());
                             break;
 
                         case 10: // Login
@@ -80,11 +84,12 @@ namespace GameServer
                             {
                                 client.SetAuthenticated(username);
                                 _clients.TryAdd(username, client);
+                                await _playerHandler.SendPlayerSpawn(client, _clients);
                             }
                             break;
 
-                        case 3:  // Ping
-                            await _utilsHandler.HandlePing(client.GetStream());
+                        case 14: // Handshake
+                            await _handshakeHandler.HandleHandshake(client.GetStream());
                             break;
                     }
                 }

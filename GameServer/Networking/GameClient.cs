@@ -10,9 +10,9 @@ namespace GameServer
         private readonly PacketReader _reader;
         private readonly PacketWriter _writer;
 
+        public PlayerData PlayerData { get; }
         public bool IsConnected => _tcpClient.Connected;
-        public string Username { get; private set; }
-        public bool IsAuthenticated { get; private set; }
+
 
         public GameClient(TcpClient tcpClient)
         {
@@ -20,8 +20,7 @@ namespace GameServer
             _stream = tcpClient.GetStream();
             _reader = new PacketReader(_stream);
             _writer = new PacketWriter();
-            Username = string.Empty;
-            IsAuthenticated = false;
+            PlayerData = new PlayerData();
         }
 
         public NetworkStream GetStream() => _stream;
@@ -30,8 +29,8 @@ namespace GameServer
 
         public void SetAuthenticated(string username)
         {
-            Username = username;
-            IsAuthenticated = true;
+            PlayerData.Username = username;
+            PlayerData.IsAuthenticated = true;
         }
 
         public void Disconnect()
