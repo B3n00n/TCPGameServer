@@ -84,20 +84,20 @@ public class PlayerPacketHandler
         }
     }
 
-    public async Task HandleLogout(GameClient sourceClient, ConcurrentDictionary<string, GameClient> clients)
+    public async Task HandleLogout(GameClient disconnectedClient, ConcurrentDictionary<string, GameClient> clients)
     {
         try
         {
             var logoutPacket = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 2);  // Remove mask
-                buffer.WriteBits(11, sourceClient.PlayerData.Index);
+                buffer.WriteBits(11, disconnectedClient.PlayerData.Index);
             });
 
             var tasks = new List<ValueTask>();
             foreach (var client in clients.Values)
             {
-                if (client != sourceClient && client.PlayerData.IsAuthenticated)
+                if (client != disconnectedClient && client.PlayerData.IsAuthenticated)
                 {
                     tasks.Add(client.GetStream().WriteAsync(logoutPacket));
                 }
