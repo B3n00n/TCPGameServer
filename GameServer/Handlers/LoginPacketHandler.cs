@@ -33,20 +33,20 @@ namespace GameServer
 
     public class LoginPacketHandler
     {
-        private readonly AuthService _authService;
+        private readonly UserService _userService;
 
-        public LoginPacketHandler(AuthService authService)
+        public LoginPacketHandler(UserService userService)
         {
-            _authService = authService;
+            _userService = userService;
         }
 
-        public async Task<(bool Success, string Username)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
+        public async Task<(bool Success, string Username, Position position)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
         {
             var revision = await readBuffer.ReadU32();
             var username = await readBuffer.ReadString();
             var password = await readBuffer.ReadString();
 
-            var (status, user) = await _authService.AuthenticateAsync(username, password, revision, activeClients);
+            var (status, user) = await _userService.AuthenticateAsync(username, password, revision, activeClients);
 
             var response = new PacketWriter();
             response.WriteU8((byte)status);
@@ -54,10 +54,12 @@ namespace GameServer
             if (status == LoginType.ACCEPTABLE && user != null)
             {
                 response.WriteU8((byte)user.Rank);
+                response.WriteU16((ushort)user.PositionX);
+                response.WriteU16((ushort)user.PositionY);
             }
 
             await stream.WriteAsync(response.ToArray());
-            return (status == LoginType.ACCEPTABLE, username);
+            return (status == LoginType.ACCEPTABLE, username, new Position(user.PositionX, user.PositionY));
         }
     }
 }

@@ -3,11 +3,11 @@ using GameServer;
 using System.Collections.Concurrent;
 using GameServer.Config;
 
-public class AuthService
+public class UserService
 {
     private readonly DatabaseContext _db;
 
-    public AuthService(DatabaseContext db)
+    public UserService(DatabaseContext db)
     {
         _db = db;
     }
@@ -34,5 +34,20 @@ public class AuthService
             return (LoginType.INVALID_CREDENTIALS, null);
 
         return (LoginType.ACCEPTABLE, user);
+    }
+
+    public async Task SaveUserPositionAsync(string username, int x, int y)
+    {
+        try
+        {
+            await _db.ExecuteAsync(
+                "UPDATE Users SET PositionX = @X, PositionY = @Y WHERE Username = @Username",
+                new { X = x, Y = y, Username = username });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving position for {username}: {ex.Message}");
+            throw; // Rethrow to handle in the game server
+        }
     }
 }

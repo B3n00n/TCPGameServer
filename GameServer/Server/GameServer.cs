@@ -11,7 +11,7 @@ namespace GameServer
     {
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
-        private readonly AuthService _authService;
+        private readonly UserService _userService;
         private readonly Pool<PlayerData> _playerIndexPool;
 
         #region Packet Handlers
@@ -30,11 +30,11 @@ namespace GameServer
             _playerIndexPool = new Pool<PlayerData>(5000);
 
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
-            _authService = new AuthService(db);
+            _userService = new UserService(db);
 
             // Initialize all packet handlers
             _handshakeHandler = new HandshakePacketHandler();
-            _loginHandler = new LoginPacketHandler(_authService);
+            _loginHandler = new LoginPacketHandler(_userService);
             _utilsHandler = new UtilsPacketHandler();
             _playerHandler = new PlayerPacketHandler();
         }
@@ -56,17 +56,11 @@ namespace GameServer
             {
                 if (!string.IsNullOrEmpty(client.PlayerData.Username))
                 {
+                    await _userService.SaveUserPositionAsync(client.PlayerData.Username, client.PlayerData.Position.X, client.PlayerData.Position.Y);
                     _clients.TryRemove(client.PlayerData.Username, out _);
-
-                    try
-                    {
-                        await _playerHandler.HandleLogout(client, _clients);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error during logout notification: {ex.Message}");
-                    }
+                    await _playerHandler.HandleLogout(client, _clients);
                 }
+
                 _playerIndexPool.Return(client.PlayerData.Index);
                 client.Disconnect();
             }
@@ -91,10 +85,11 @@ namespace GameServer
                             break;
 
                         case 10: // Login
-                            var (success, username) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
+                            var (success, username, position) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
                             if (success)
                             {
                                 client.SetAuthenticated(username);
+                                client.PlayerData.Position = position;
                                 _clients.TryAdd(username, client);
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
                             }
