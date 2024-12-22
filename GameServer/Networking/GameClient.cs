@@ -14,13 +14,13 @@ namespace GameServer
         public bool IsConnected => _tcpClient?.Connected == true && _tcpClient.Client?.Poll(0, SelectMode.SelectRead) != true;
 
 
-        public GameClient(TcpClient tcpClient)
+        public GameClient(TcpClient tcpClient, int index)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _reader = new PacketReader(_stream);
             _writer = new PacketWriter();
-            PlayerData = new PlayerData();
+            PlayerData = new PlayerData { Index = index };
         }
 
         public NetworkStream GetStream() => _stream;

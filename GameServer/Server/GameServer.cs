@@ -3,6 +3,7 @@ using GameServer.Handlers;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Net;
+using GameServer.Core;
 
 namespace GameServer
 {
@@ -11,6 +12,7 @@ namespace GameServer
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
         private readonly AuthService _authService;
+        private readonly Pool<PlayerData> _playerIndexPool;
 
         #region Packet Handlers
         private readonly HandshakePacketHandler _handshakeHandler;
@@ -25,6 +27,7 @@ namespace GameServer
         {
             _listener = new TcpListener(IPAddress.Any, GameConfig.PORT);
             _clients = new ConcurrentDictionary<string, GameClient>();
+            _playerIndexPool = new Pool<PlayerData>(5000);
 
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
             _authService = new AuthService(db);
@@ -39,7 +42,7 @@ namespace GameServer
         private async Task HandleClientAsync(TcpClient tcpClient)
         {
             Console.WriteLine($"New client connected from {tcpClient.Client.RemoteEndPoint}");
-            var client = new GameClient(tcpClient);
+            var client = new GameClient(tcpClient, _playerIndexPool.Get());
 
             try
             {
@@ -64,6 +67,7 @@ namespace GameServer
                         Console.WriteLine($"Error during logout notification: {ex.Message}");
                     }
                 }
+                _playerIndexPool.Return(client.PlayerData.Index);
                 client.Disconnect();
             }
         }
