@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace GameServer.Packets
+namespace GameServer.Core.Network
 {
     public class BitBuffer
     {
@@ -29,21 +29,21 @@ namespace GameServer.Packets
             int bitOffset = bitPosition & 7;
             bitPosition += numBits;
 
-            if ((bitPosition + 7) >> 3 > buffer.Length)
+            if (bitPosition + 7 >> 3 > buffer.Length)
             {
                 Array.Resize(ref buffer, buffer.Length * 2);
             }
 
-            writePosition = Math.Max(writePosition, (bitPosition + 7) >> 3);
+            writePosition = Math.Max(writePosition, bitPosition + 7 >> 3);
 
             while (numBits > 0)
             {
                 int bitsThisByte = Math.Min(8 - bitOffset, numBits);
-                int mask = BitMasks[bitsThisByte] << (8 - bitOffset - bitsThisByte);
-                int alignedValue = (value >> (numBits - bitsThisByte)) & BitMasks[bitsThisByte];
+                int mask = BitMasks[bitsThisByte] << 8 - bitOffset - bitsThisByte;
+                int alignedValue = value >> numBits - bitsThisByte & BitMasks[bitsThisByte];
 
                 buffer[bytePos] &= (byte)~mask;
-                buffer[bytePos] |= (byte)(alignedValue << (8 - bitOffset - bitsThisByte));
+                buffer[bytePos] |= (byte)(alignedValue << 8 - bitOffset - bitsThisByte);
 
                 numBits -= bitsThisByte;
                 bitOffset += bitsThisByte;

@@ -1,7 +1,7 @@
-﻿using GameServer.Packets;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
+using GameServer.Domain.Models.Player;
 
-namespace GameServer
+namespace GameServer.Core.Network
 {
     public class GameClient
     {

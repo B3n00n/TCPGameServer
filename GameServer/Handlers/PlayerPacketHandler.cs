@@ -1,6 +1,6 @@
-﻿using GameServer.Packets;
-using GameServer;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
+using GameServer.Core.Network;
+using GameServer.Domain.Models.Player;
 
 public class PlayerPacketHandler
 {

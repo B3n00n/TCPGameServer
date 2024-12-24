@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
 
-namespace GameServer.Packets
+namespace GameServer.Core.Network
 {
     public class PacketWriter
     {

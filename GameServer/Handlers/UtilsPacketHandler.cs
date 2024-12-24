@@ -1,4 +1,4 @@
-﻿using GameServer.Packets;
+﻿using GameServer.Core.Network;
 using System.Diagnostics;
 using System.Net.Sockets;
 

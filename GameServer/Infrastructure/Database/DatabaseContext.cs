@@ -2,7 +2,7 @@
 using Dapper;
 using System.Data;
 
-namespace GameServer
+namespace GameServer.Infrastructure.Database
 {
     public class DatabaseContext
     {

@@ -1,11 +1,14 @@
-﻿using GameServer.Config;
-using GameServer.Handlers;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Net;
+using GameServer.Handlers;
 using GameServer.Core;
+using GameServer.Domain.Models.Player;
+using GameServer.Infrastructure.Config;
+using GameServer.Infrastructure.Database;
+using GameServer.Core.Network;
 
-namespace GameServer
+namespace GameServer.Server.Core
 {
     public class GameServer
     {
@@ -85,12 +88,12 @@ namespace GameServer
                             break;
 
                         case 10: // Login
-                            var (success, username, position) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
-                            if (success)
+                            var loginResult = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
+                            if (loginResult.Success && loginResult.User != null)
                             {
-                                client.SetAuthenticated(username);
-                                client.PlayerData.Position = position;
-                                _clients.TryAdd(username, client);
+                                client.SetAuthenticated(loginResult.User.Username);
+                                client.PlayerData.Position = new Position(loginResult.User.PositionX, loginResult.User.PositionY);
+                                _clients.TryAdd(loginResult.User.Username, client);
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
                             }
                             break;

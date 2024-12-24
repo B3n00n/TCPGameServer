@@ -1,12 +1,8 @@
-﻿using System.Threading.Tasks;
-using GameServer.Config;
-using Microsoft.Data.Sqlite;
-
-namespace GameServer
+﻿namespace GameServer.Server.Core
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             Console.WriteLine("Starting game server...");
 

@@ -2,7 +2,7 @@
 using System.Net.Sockets;
 using System.Text;
 
-namespace GameServer.Packets
+namespace GameServer.Core.Network
 {
     public class PacketReader
     {

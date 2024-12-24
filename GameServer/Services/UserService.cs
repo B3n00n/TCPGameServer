@@ -1,7 +1,9 @@
-﻿using GameServer.Data;
-using GameServer;
-using System.Collections.Concurrent;
-using GameServer.Config;
+﻿using System.Collections.Concurrent;
+using GameServer.Handlers;
+using GameServer.Domain.Models;
+using GameServer.Infrastructure.Config;
+using GameServer.Infrastructure.Database;
+using GameServer.Core.Network;
 
 public class UserService
 {

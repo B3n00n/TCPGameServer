@@ -1,4 +1,4 @@
-﻿namespace GameServer.Config
+﻿namespace GameServer.Infrastructure.Config
 {
     public static class GameConfig
     {

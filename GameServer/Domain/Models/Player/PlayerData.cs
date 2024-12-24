@@ -1,4 +1,4 @@
-﻿namespace GameServer
+﻿namespace GameServer.Domain.Models.Player
 {
     public class PlayerData
     {

@@ -1,8 +1,9 @@
-﻿using GameServer.Packets;
+﻿using GameServer.Core.Network;
+using GameServer.Domain;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 
-namespace GameServer
+namespace GameServer.Handlers
 {
     public enum LoginType
     {
@@ -40,7 +41,7 @@ namespace GameServer
             _userService = userService;
         }
 
-        public async Task<(bool Success, string Username, Position position)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
+        public async Task<LoginResult> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
         {
             var revision = await readBuffer.ReadU32();
             var username = await readBuffer.ReadString();
@@ -59,7 +60,8 @@ namespace GameServer
             }
 
             await stream.WriteAsync(response.ToArray());
-            return (status == LoginType.ACCEPTABLE, username, new Position(user.PositionX, user.PositionY));
+
+            return new LoginResult(status, status == LoginType.ACCEPTABLE ? user : null);
         }
     }
 }
