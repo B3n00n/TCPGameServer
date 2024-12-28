@@ -60,8 +60,8 @@ namespace GameServer.Server.Core
                 if (!string.IsNullOrEmpty(client.PlayerData.Username))
                 {
                     await _userService.SaveUserPositionAsync(client.PlayerData.Username, client.PlayerData.Position.X, client.PlayerData.Position.Y);
-                    _clients.TryRemove(client.PlayerData.Username, out _);
                     await _playerHandler.HandleLogout(client, _clients);
+                    _clients.TryRemove(client.PlayerData.Username, out _);
                 }
 
                 _playerIndexPool.Return(client.PlayerData.Index);
