@@ -11,7 +11,7 @@ namespace GameServer.Core.Network
         private readonly PacketWriter _writer;
 
         public PlayerData PlayerData { get; }
-        public bool IsConnected => _tcpClient?.Client?.Connected == true && _tcpClient.Client.Available >= 0;
+        public bool IsConnected => _tcpClient?.Client?.Poll(1, SelectMode.SelectRead) != true || _tcpClient?.Client?.Available != 0;
 
         public GameClient(TcpClient tcpClient, int index)
         {
