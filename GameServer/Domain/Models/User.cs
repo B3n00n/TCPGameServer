@@ -10,5 +10,6 @@
 
         public int PositionX { get; set; }
         public int PositionY { get; set; }
+        public byte Direction { get; set; }
     }
 }

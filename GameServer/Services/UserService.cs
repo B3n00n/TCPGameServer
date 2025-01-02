@@ -38,13 +38,13 @@ public class UserService
         return (LoginType.ACCEPTABLE, user);
     }
 
-    public async Task SaveUserPositionAsync(string username, int x, int y)
+    public async Task SaveUserDataAsync(string username, int x, int y, int direction)
     {
         try
         {
             await _db.ExecuteAsync(
-                "UPDATE Users SET PositionX = @X, PositionY = @Y WHERE Username = @Username",
-                new { X = x, Y = y, Username = username });
+                "UPDATE Users SET PositionX = @X, PositionY = @Y, Direction = @Direction WHERE Username = @Username",
+                new { X = x, Y = y, Username = username, Direction = direction });
         }
         catch (Exception ex)
         {

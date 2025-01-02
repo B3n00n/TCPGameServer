@@ -59,7 +59,7 @@ namespace GameServer.Server.Core
             {
                 if (!string.IsNullOrEmpty(client.PlayerData.Username))
                 {
-                    await _userService.SaveUserPositionAsync(client.PlayerData.Username, client.PlayerData.Position.X, client.PlayerData.Position.Y);
+                    await _userService.SaveUserDataAsync(client.PlayerData.Username, client.PlayerData.Position.X, client.PlayerData.Position.Y, client.PlayerData.Direction);
                     await _playerHandler.HandleLogout(client, _clients);
                     _clients.TryRemove(client.PlayerData.Username, out _);
                 }
@@ -93,6 +93,7 @@ namespace GameServer.Server.Core
                             {
                                 client.SetAuthenticated(loginResult.User.Username);
                                 client.PlayerData.Position = new Position(loginResult.User.PositionX, loginResult.User.PositionY);
+                                client.PlayerData.Direction = loginResult.User.Direction;
                                 _clients.TryAdd(loginResult.User.Username, client);
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
                             }

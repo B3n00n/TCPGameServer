@@ -57,6 +57,7 @@ namespace GameServer.Handlers
                 response.WriteU8((byte)user.Rank);
                 response.WriteU16((ushort)user.PositionX);
                 response.WriteU16((ushort)user.PositionY);
+                response.WriteU8(user.Direction);
             }
 
             await stream.WriteAsync(response.ToArray());
