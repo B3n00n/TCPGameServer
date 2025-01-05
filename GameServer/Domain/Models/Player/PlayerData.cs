@@ -8,5 +8,6 @@
         public byte Direction { get; set; } = 0;
         public byte MovementType { get; set; } = 0;
         public bool IsAuthenticated { get; set; } = false;
+        public byte Rank { get; set; } = 0;
     }
 }

@@ -22,6 +22,7 @@ namespace GameServer.Server.Core
         private readonly LoginPacketHandler _loginHandler;
         private readonly UtilsPacketHandler _utilsHandler;
         private readonly PlayerPacketHandler _playerHandler;
+        private readonly ChatPacketHandler _chatHandler;
         #endregion
 
         private bool _isRunning;
@@ -40,6 +41,7 @@ namespace GameServer.Server.Core
             _loginHandler = new LoginPacketHandler(_userService);
             _utilsHandler = new UtilsPacketHandler();
             _playerHandler = new PlayerPacketHandler();
+            _chatHandler = new ChatPacketHandler();
         }
 
         private async Task HandleClientAsync(TcpClient tcpClient)
@@ -86,7 +88,11 @@ namespace GameServer.Server.Core
                         case 3:  // Ping
                             await _utilsHandler.HandlePing(client.GetStream());
                             break;
-
+                        case 4:  // Chat message
+                            Console.WriteLine($"[Server] Received chat packet from {client.PlayerData.Username}");
+                            if (client.PlayerData.IsAuthenticated)
+                                await _chatHandler.HandleChat(client, _clients, client.GetReader());
+                            break;
                         case 10: // Login
                             var loginResult = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
                             if (loginResult.Success && loginResult.User != null)
@@ -94,6 +100,7 @@ namespace GameServer.Server.Core
                                 client.SetAuthenticated(loginResult.User.Username);
                                 client.PlayerData.Position = new Position(loginResult.User.PositionX, loginResult.User.PositionY);
                                 client.PlayerData.Direction = loginResult.User.Direction;
+                                client.PlayerData.Rank = (byte)loginResult.User.Rank;
                                 _clients.TryAdd(loginResult.User.Username, client);
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
                             }
