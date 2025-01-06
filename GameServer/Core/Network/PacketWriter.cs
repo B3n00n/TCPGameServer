@@ -30,7 +30,7 @@ namespace GameServer.Core.Network
 
         public void WriteString(string value)
         {
-            var bytes = Encoding.UTF8.GetBytes(value);
+            var bytes = Encoding.ASCII.GetBytes(value);
             WriteU32((uint)bytes.Length);
             _writer.Write(bytes);
         }
@@ -41,11 +41,6 @@ namespace GameServer.Core.Network
         {
             _stream.SetLength(0);
             _stream.Position = 0;
-        }
-
-        public void WriteBytes(byte[] data)
-        {
-            _writer.Write(data);
         }
     }
 }

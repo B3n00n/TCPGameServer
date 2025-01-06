@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using GameServer.Core.Network;
 using System.Text.RegularExpressions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text;
 
 namespace GameServer.Handlers
 {
@@ -14,54 +14,45 @@ namespace GameServer.Handlers
         {
             try
             {
-                // Read message length first (16-bit)
                 var length = await reader.ReadU16();
+                if (length <= 0 || length > MAX_MESSAGE_LENGTH) return;
+
                 var buffer = new byte[length];
                 await sourceClient.GetStream().ReadAsync(buffer, 0, length);
-                var message = System.Text.Encoding.UTF8.GetString(buffer);
+                var message = _sanitizePattern.Replace(Encoding.ASCII.GetString(buffer).Trim(), string.Empty);
 
-                Console.WriteLine($"[Chat] Received message from {sourceClient.PlayerData.Username}: {message}");
+                if (string.IsNullOrEmpty(message)) return;
 
-                if (string.IsNullOrWhiteSpace(message) || message.Length > MAX_MESSAGE_LENGTH)
-                {
-                    return;
-                }
-
-                // Trim and sanitize message
-                message = message.Trim();
-                message = _sanitizePattern.Replace(message, string.Empty);
-
-                if (message.Length == 0)
-                {
-                    return;
-                }
-
-                // Create the chat packet
                 var writer = new PacketWriter();
                 writer.WriteU8(4); // Chat opcode
 
-                // Use the built-in WriteString method which matches client's reading format
+                // Calculate total length (4 for string lengths + username + message + 1 for rank)
+                var totalLength = 4 + Encoding.ASCII.GetByteCount(sourceClient.PlayerData.Username) + 4 + Encoding.ASCII.GetByteCount(message) + 1;
+                writer.WriteU16((ushort)totalLength);
+
                 writer.WriteString(sourceClient.PlayerData.Username);
                 writer.WriteString(message);
                 writer.WriteU8(sourceClient.PlayerData.Rank);
 
                 var responseData = writer.ToArray();
-                Console.WriteLine($"[Chat Debug] Packet length: {responseData.Length}");
-                Console.WriteLine($"[Chat Debug] Raw bytes: {BitConverter.ToString(responseData)}");
 
-                // Broadcast to all connected and authenticated clients
+                // Broadcast to all authenticated clients except sender
+                var tasks = new List<ValueTask>();
                 foreach (var client in clients.Values)
                 {
-                    if (client.PlayerData.IsAuthenticated)
+                    if (client.PlayerData.IsAuthenticated && client != sourceClient)
                     {
-                        await client.GetStream().WriteAsync(responseData);
+                        tasks.Add(client.GetStream().WriteAsync(responseData));
                     }
+                }
+                foreach (var task in tasks)
+                {
+                    await task;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Chat] Error handling chat message: {ex.Message}");
-                Console.WriteLine($"[Chat] Stack trace: {ex.StackTrace}");
+                Console.WriteLine($"[Chat] Error: {ex.Message}");
             }
         }
 
@@ -69,9 +60,18 @@ namespace GameServer.Handlers
         {
             try
             {
+                if (!client.PlayerData.IsAuthenticated) return;
+
                 var writer = new PacketWriter();
                 writer.WriteU8(6);  // Game message opcode
-                writer.WriteString(message);
+
+                var sanitizedMessage = _sanitizePattern.Replace(message.Trim(), string.Empty);
+                if (string.IsNullOrEmpty(sanitizedMessage)) return;
+
+                var totalLength = 4 + Encoding.ASCII.GetByteCount(sanitizedMessage);
+                writer.WriteU16((ushort)totalLength);
+                writer.WriteString(sanitizedMessage);
+
                 await client.GetStream().WriteAsync(writer.ToArray());
             }
             catch (Exception ex)
@@ -84,17 +84,29 @@ namespace GameServer.Handlers
         {
             try
             {
+                var sanitizedMessage = _sanitizePattern.Replace(message.Trim(), string.Empty);
+                if (string.IsNullOrEmpty(sanitizedMessage)) return;
+
                 var writer = new PacketWriter();
                 writer.WriteU8(6);  // Game message opcode
-                writer.WriteString(message);
+
+                var totalLength = 4 + Encoding.ASCII.GetByteCount(sanitizedMessage);
+                writer.WriteU16((ushort)totalLength);
+                writer.WriteString(sanitizedMessage);
+
                 var responseData = writer.ToArray();
 
+                var tasks = new List<ValueTask>();
                 foreach (var client in clients.Values)
                 {
                     if (client.PlayerData.IsAuthenticated)
                     {
-                        await client.GetStream().WriteAsync(responseData);
+                        tasks.Add(client.GetStream().WriteAsync(responseData));
                     }
+                }
+                foreach (var task in tasks)
+                {
+                    await task;
                 }
             }
             catch (Exception ex)

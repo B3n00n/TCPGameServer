@@ -37,11 +37,19 @@ namespace GameServer.Core.Network
         public async Task<string> ReadString()
         {
             var length = (int)await ReadU32();
-            if (length <= 0) return string.Empty;
 
             var buffer = new byte[length];
             await _networkStream.ReadAsync(buffer, 0, length);
             return Encoding.UTF8.GetString(buffer);
+        }
+
+        public async Task<string> ReadAsciiString()
+        {
+            var length = await ReadU16();
+
+            var buffer = new byte[length];
+            await _networkStream.ReadAsync(buffer, 0, length);
+            return Encoding.ASCII.GetString(buffer);
         }
     }
 }

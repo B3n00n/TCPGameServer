@@ -89,7 +89,6 @@ namespace GameServer.Server.Core
                             await _utilsHandler.HandlePing(client.GetStream());
                             break;
                         case 4:  // Chat message
-                            Console.WriteLine($"[Server] Received chat packet from {client.PlayerData.Username}");
                             if (client.PlayerData.IsAuthenticated)
                                 await _chatHandler.HandleChat(client, _clients, client.GetReader());
                             break;
