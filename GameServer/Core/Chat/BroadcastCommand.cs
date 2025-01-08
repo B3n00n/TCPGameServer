@@ -5,13 +5,17 @@ namespace GameServer.Core.Chat
 {
     public class BroadcastCommand : IChatCommand
     {
-        public IEnumerable<string> Triggers => ["help", "commands"];
+        public IEnumerable<string> Triggers => ["broadcast"];
         public int RequiredRank => 6;
-        public string Description => "Shows available commands";
+        public string Description => "Broadcasts a message to all players";
 
         public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler packetHandler)
         {
-            await packetHandler.BroadcastChatMessage(sender, "MESSAGE!");
+            if (args.Length == 0) { await packetHandler.SendGameMessage(sender, "Usage: /broadcast <message>"); return; }
+
+            var message = string.Join(" ", args);
+
+            await packetHandler.BroadcastGameMessage($"<col=FF0000>[Broadcast] {message}");
         }
     }
 }

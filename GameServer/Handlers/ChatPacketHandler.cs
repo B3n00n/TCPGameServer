@@ -73,5 +73,26 @@ namespace GameServer.Handlers
 
             await client.GetStream().WriteAsync(writer.ToArray());
         }
+
+        public async Task BroadcastGameMessage(string message)
+        {
+            var writer = new PacketWriter();
+            writer.WriteU8(6);  // Game message opcode
+            writer.WriteU16((ushort)(4 + Encoding.ASCII.GetByteCount(message)));
+            writer.WriteString(message);
+
+            var packet = writer.ToArray();
+            var tasks = new List<ValueTask>();
+
+            foreach (var client in _clients.Values)
+            {
+                if (client.PlayerData.IsAuthenticated)
+                {
+                    tasks.Add(client.GetStream().WriteAsync(packet));
+                }
+            }
+
+            await Task.WhenAll(tasks.Select(t => t.AsTask()));
+        }
     }
 }
