@@ -7,6 +7,7 @@ using GameServer.Domain.Models.Player;
 using GameServer.Infrastructure.Config;
 using GameServer.Infrastructure.Database;
 using GameServer.Core.Network;
+using GameServer.Core.Chat;
 
 namespace GameServer.Server.Core
 {
@@ -15,6 +16,7 @@ namespace GameServer.Server.Core
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
         private readonly UserService _userService;
+        private readonly ChatService _chatService;
         private readonly Pool<PlayerData> _playerIndexPool;
 
         #region Packet Handlers
@@ -22,7 +24,6 @@ namespace GameServer.Server.Core
         private readonly LoginPacketHandler _loginHandler;
         private readonly UtilsPacketHandler _utilsHandler;
         private readonly PlayerPacketHandler _playerHandler;
-        private readonly ChatPacketHandler _chatHandler;
         #endregion
 
         private bool _isRunning;
@@ -35,13 +36,13 @@ namespace GameServer.Server.Core
 
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
             _userService = new UserService(db);
+            _chatService = new ChatService(_clients);
 
             // Initialize all packet handlers
             _handshakeHandler = new HandshakePacketHandler();
             _loginHandler = new LoginPacketHandler(_userService);
             _utilsHandler = new UtilsPacketHandler();
             _playerHandler = new PlayerPacketHandler();
-            _chatHandler = new ChatPacketHandler();
         }
 
         private async Task HandleClientAsync(TcpClient tcpClient)
@@ -90,7 +91,7 @@ namespace GameServer.Server.Core
                             break;
                         case 4:  // Chat message
                             if (client.PlayerData.IsAuthenticated)
-                                await _chatHandler.HandleChat(client, _clients, client.GetReader());
+                                await _chatService.HandlePacket(client, client.GetReader());
                             break;
                         case 10: // Login
                             var loginResult = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);

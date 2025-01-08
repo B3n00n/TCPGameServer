@@ -1,0 +1,83 @@
+﻿using System.Collections.Concurrent;
+using GameServer.Core.Network;
+using GameServer.Handlers;
+
+namespace GameServer.Core.Chat
+{
+    public class CommandHandler
+    {
+        private readonly Dictionary<string, IChatCommand> _commands;
+        private readonly ConcurrentDictionary<string, GameClient> _clients;
+        private readonly Dictionary<int, string> _rankHelpMessages;
+
+        public CommandHandler(ConcurrentDictionary<string, GameClient> clients)
+        {
+            _clients = clients;
+            _commands = new Dictionary<string, IChatCommand>(StringComparer.OrdinalIgnoreCase);
+            _rankHelpMessages = new Dictionary<int, string>();
+
+            RegisterCommands();
+            GenerateHelpMessages();
+        }
+
+        private void RegisterCommands()
+        {
+            RegisterCommand(new OnlineCommand(_clients));
+            RegisterCommand(new BroadcastCommand());
+
+            RegisterCommand(new HelpCommand(_rankHelpMessages));
+        }
+
+        private void RegisterCommand(IChatCommand command)
+        {
+            foreach (var trigger in command.Triggers)
+            {
+                _commands[trigger.ToLower()] = command;
+            }
+        }
+
+        public async Task HandleCommand(GameClient sender, string[] commandParts, ChatPacketHandler packetHandler)
+        {
+            string commandTrigger = commandParts[0].ToLower();
+
+            if (_commands.TryGetValue(commandTrigger, out var command))
+            {
+                if (sender.PlayerData.Rank >= command.RequiredRank)
+                {
+                    try
+                    {
+                        await command.ExecuteAsync(sender, commandParts.Skip(1).ToArray(), packetHandler);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Command execution error: {ex}");
+                        await packetHandler.SendGameMessage(sender, "An error occurred while executing the command.");
+                    }
+                }
+                else
+                {
+                    await packetHandler.SendGameMessage(sender, "You don't have permission to use this command.");
+                }
+            }
+            else
+            {
+                await packetHandler.SendGameMessage(sender, $"Unknown command: {commandTrigger}");
+            }
+        }
+
+        // Generate help messages for each rank
+        private void GenerateHelpMessages()
+        {
+            for (int rank = 0; rank <= 6; rank++)
+            {
+                var commandList = _commands.Values
+                    .Distinct()
+                    .Where(cmd => rank >= cmd.RequiredRank)
+                    .OrderBy(cmd => cmd.Triggers.First())
+                    .Select(cmd => $"/{cmd.Triggers.First()} - {cmd.Description}");
+
+                _rankHelpMessages[rank] = "Available commands:\n" + string.Join("\n", commandList);
+            }
+        }
+    }
+}
