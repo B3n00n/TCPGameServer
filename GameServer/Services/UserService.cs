@@ -40,8 +40,8 @@ public class UserService
         return (LoginType.ACCEPTABLE, user);
     }
 
-    public async Task SaveUserDataAsync(string username, int x, int y, int direction)
+    public async Task SaveUserDataAsync(string username, int x, int y, int direction, int movementType)
     {
-        await _userRepository.UpdatePositionAsync(username, x, y, direction);
+        await _userRepository.UpdatePositionAsync(username, x, y, direction, movementType);
     }
 }

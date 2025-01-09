@@ -48,6 +48,7 @@ public class PlayerPacketHandler
                         buffer.WriteBits(16, (int)existingClient.PlayerData.Position.X);
                         buffer.WriteBits(16, (int)existingClient.PlayerData.Position.Y);
                         buffer.WriteBits(3, existingClient.PlayerData.Direction);
+                        buffer.WriteBits(3, existingClient.PlayerData.MovementType);
                     });
 
                     await newPlayer.GetStream().WriteAsync(existingPlayerPacket).ConfigureAwait(false);
@@ -63,6 +64,7 @@ public class PlayerPacketHandler
                 buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.X);
                 buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.Y);
                 buffer.WriteBits(3, newPlayer.PlayerData.Direction);
+                buffer.WriteBits(3, newPlayer.PlayerData.MovementType);
             });
 
             var tasks = new List<ValueTask>();

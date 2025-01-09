@@ -17,9 +17,9 @@ namespace GameServer.Infrastructure.Database
                 $"SELECT * FROM {TableName} WHERE Username = @Username",
                 new { Username = username });
 
-        public async Task UpdatePositionAsync(string username, int x, int y, int direction)
+        public async Task UpdatePositionAsync(string username, int x, int y, int direction, int movementType)
             => await _db.ExecuteAsync(
-                $"UPDATE {TableName} SET PositionX = @X, PositionY = @Y, Direction = @Direction WHERE Username = @Username",
-                new { Username = username, X = x, Y = y, Direction = direction });
+                $"UPDATE {TableName} SET PositionX = @X, PositionY = @Y, Direction = @Direction, MovementType = @MovementType WHERE Username = @Username",
+                new { Username = username, X = x, Y = y, Direction = direction, MovementType = movementType });
     }
 }
