@@ -24,6 +24,7 @@ namespace GameServer.Core.Chat
         {
             RegisterCommand(new OnlineCommand(_clients));
             RegisterCommand(new BroadcastCommand());
+            RegisterCommand(new KickCommand(_clients));
 
             RegisterCommand(new HelpCommand(_rankHelpMessages));
         }
