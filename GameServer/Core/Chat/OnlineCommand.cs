@@ -17,10 +17,10 @@ namespace GameServer.Core.Chat
         public int RequiredRank => 0;
         public string Description => "Shows the number of online players";
 
-        public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler packetHandler)
+        public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler chatPacketHandler)
         {
             int onlineCount = _clients.Count(x => x.Value.PlayerData.IsAuthenticated);
-            await packetHandler.SendGameMessage(sender, $"Users Online: {onlineCount}");
+            await chatPacketHandler.SendGameMessage(sender, $"Users Online: {onlineCount}");
         }
     }
 }

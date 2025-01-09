@@ -16,9 +16,9 @@ namespace GameServer.Core.Chat
         public int RequiredRank => 0;
         public string Description => "Shows available commands";
 
-        public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler packetHandler)
+        public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler chatPacketHandler)
         {
-            await packetHandler.SendGameMessage(sender, _rankHelpMessages[sender.PlayerData.Rank]);
+            await chatPacketHandler.SendGameMessage(sender, _rankHelpMessages[sender.PlayerData.Rank]);
         }
     }
 }

@@ -36,7 +36,7 @@ namespace GameServer.Core.Chat
             }
         }
 
-        public async Task HandleCommand(GameClient sender, string[] commandParts, ChatPacketHandler packetHandler)
+        public async Task HandleCommand(GameClient sender, string[] commandParts, ChatPacketHandler chatPacketHandler)
         {
             string commandTrigger = commandParts[0].ToLower();
 
@@ -46,22 +46,22 @@ namespace GameServer.Core.Chat
                 {
                     try
                     {
-                        await command.ExecuteAsync(sender, commandParts.Skip(1).ToArray(), packetHandler);
+                        await command.ExecuteAsync(sender, commandParts.Skip(1).ToArray(), chatPacketHandler);
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Command execution error: {ex}");
-                        await packetHandler.SendGameMessage(sender, "An error occurred while executing the command.");
+                        await chatPacketHandler.SendGameMessage(sender, "An error occurred while executing the command.");
                     }
                 }
                 else
                 {
-                    await packetHandler.SendGameMessage(sender, "You don't have permission to use this command.");
+                    await chatPacketHandler.SendGameMessage(sender, "You don't have permission to use this command.");
                 }
             }
             else
             {
-                await packetHandler.SendGameMessage(sender, $"Unknown command: {commandTrigger}");
+                await chatPacketHandler.SendGameMessage(sender, $"Unknown command: {commandTrigger}");
             }
         }
 

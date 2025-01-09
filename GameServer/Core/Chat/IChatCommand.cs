@@ -8,6 +8,6 @@ namespace GameServer.Core.Chat
         IEnumerable<string> Triggers { get; }
         int RequiredRank { get; }
         string Description { get; }
-        Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler packetHandler);
+        Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler chatPacketHandler);
     }
 }
