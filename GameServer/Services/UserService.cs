@@ -14,12 +14,12 @@ public class UserService
         _db = db;
     }
 
-    public async Task<(LoginType Status, User? User)> AuthenticateAsync(string username, string password, uint revision, ConcurrentDictionary<string, GameClient> activeClients)
+    public async Task<(LoginType Status, UserModel? User)> AuthenticateAsync(string username, string password, uint revision, ConcurrentDictionary<string, GameClient> activeClients)
     {
         if (revision != GameConfig.REVISION)
             return (LoginType.REVISION_MISMATCH, null);
 
-        var user = await _db.QueryFirstOrDefaultAsync<User>(
+        var user = await _db.QueryFirstOrDefaultAsync<UserModel>(
             "SELECT * FROM Users WHERE Username = @Username",
             new { Username = username });
 

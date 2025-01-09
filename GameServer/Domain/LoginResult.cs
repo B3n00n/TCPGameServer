@@ -11,9 +11,9 @@ namespace GameServer.Domain
     {
         public bool Success { get; }
         public LoginType Status { get; }
-        public User? User { get; }
+        public UserModel? User { get; }
 
-        public LoginResult(LoginType status, User? user = null)
+        public LoginResult(LoginType status, UserModel? user = null)
         {
             Status = status;
             User = user;
