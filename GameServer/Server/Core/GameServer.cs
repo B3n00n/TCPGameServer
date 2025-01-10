@@ -8,7 +8,6 @@ using GameServer.Infrastructure.Config;
 using GameServer.Infrastructure.Database;
 using GameServer.Core.Network;
 using GameServer.Core.Chat;
-using GameServer.Infrastructure;
 
 namespace GameServer.Server.Core
 {
