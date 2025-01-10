@@ -1,5 +1,6 @@
 ﻿using GameServer.Core.Network;
 using GameServer.Domain;
+using GameServer.Domain.Models;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 
@@ -41,29 +42,29 @@ namespace GameServer.Handlers
             _userService = userService;
         }
 
-        public async Task<LoginResult> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
+        public async Task<(LoginType Status, Account? Account, AccountState? State)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
         {
             var revision = await readBuffer.ReadU32();
             var username = await readBuffer.ReadString();
             var password = await readBuffer.ReadString();
 
-            var (status, user) = await _userService.AuthenticateAsync(username, password, revision, activeClients);
+            var (status, account, state) = await _userService.AuthenticateAsync(username, password, revision, activeClients);
 
             var response = new PacketWriter();
             response.WriteU8((byte)status);
 
-            if (status == LoginType.ACCEPTABLE && user != null)
+            if (status == LoginType.ACCEPTABLE && account != null && state != null)
             {
-                response.WriteU8((byte)user.Rank);
-                response.WriteU16((ushort)user.PositionX);
-                response.WriteU16((ushort)user.PositionY);
-                response.WriteU8(user.Direction);
-                response.WriteU8(user.MovementType);
+                response.WriteU8((byte)account.Rank);
+                response.WriteU16((ushort)state.PositionX);
+                response.WriteU16((ushort)state.PositionY);
+                response.WriteU8(state.Direction);
+                response.WriteU8(state.MovementType);
             }
 
             await stream.WriteAsync(response.ToArray());
 
-            return new LoginResult(status, status == LoginType.ACCEPTABLE ? user : null);
+            return (status, account, state);
         }
     }
 }

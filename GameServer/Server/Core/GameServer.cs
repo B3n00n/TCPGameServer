@@ -8,11 +8,14 @@ using GameServer.Infrastructure.Config;
 using GameServer.Infrastructure.Database;
 using GameServer.Core.Network;
 using GameServer.Core.Chat;
+using GameServer.Infrastructure;
 
 namespace GameServer.Server.Core
 {
     public class GameServer
     {
+        private readonly DatabaseInitializer _dbInitializer;
+
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
         private readonly UserService _userService;
@@ -35,6 +38,8 @@ namespace GameServer.Server.Core
             _playerIndexPool = new Pool<PlayerData>(5000);
 
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
+            _dbInitializer = new DatabaseInitializer(db);
+
             _userService = new UserService(db);
             _chatService = new ChatService(_clients);
 
@@ -62,7 +67,7 @@ namespace GameServer.Server.Core
             {
                 if (!string.IsNullOrEmpty(client.PlayerData.Username))
                 {
-                    await _userService.SaveUserDataAsync(client.PlayerData.Username, client.PlayerData.Position.X, client.PlayerData.Position.Y, client.PlayerData.Direction, client.PlayerData.MovementType);
+                    await _userService.SaveUserDataAsync(client.PlayerData.AccountId, client.PlayerData.Position.X, client.PlayerData.Position.Y, client.PlayerData.Direction, client.PlayerData.MovementType);
                     await _playerHandler.HandleLogout(client, _clients);
                     _clients.TryRemove(client.PlayerData.Username, out _);
                 }
@@ -94,15 +99,11 @@ namespace GameServer.Server.Core
                                 await _chatService.HandlePacket(client, client.GetReader());
                             break;
                         case 10: // Login
-                            var loginResult = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
-                            if (loginResult.Success && loginResult.User != null)
+                            var (status, account, state) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
+                            if (status == LoginType.ACCEPTABLE && account != null && state != null)
                             {
-                                client.SetAuthenticated(loginResult.User.Username);
-                                client.PlayerData.Position = new Position(loginResult.User.PositionX, loginResult.User.PositionY);
-                                client.PlayerData.Direction = loginResult.User.Direction;
-                                client.PlayerData.MovementType = loginResult.User.MovementType;
-                                client.PlayerData.Rank = (byte)loginResult.User.Rank;
-                                _clients.TryAdd(loginResult.User.Username, client);
+                                client.SetData(account, state);
+                                _clients.TryAdd(account.Username, client);
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
                             }
                             break;
@@ -126,6 +127,8 @@ namespace GameServer.Server.Core
 
         public async Task StartAsync()
         {
+            await _dbInitializer.InitializeAsync();
+
             _isRunning = true;
             _listener.Start();
             Console.WriteLine($"Server started on port {GameConfig.PORT}");

@@ -1,4 +1,5 @@
 ﻿using System.Net.Sockets;
+using GameServer.Domain.Models;
 using GameServer.Domain.Models.Player;
 
 namespace GameServer.Core.Network
@@ -26,9 +27,15 @@ namespace GameServer.Core.Network
         public PacketReader GetReader() => _reader;
         public PacketWriter GetWriter() => _writer;
 
-        public void SetAuthenticated(string username)
+        public void SetData(Account account, AccountState state)
         {
-            PlayerData.Username = username;
+            PlayerData.Username = account.Username;
+            PlayerData.AccountId = account.Id;
+            PlayerData.Position = new Position(state.PositionX, state.PositionY);
+            PlayerData.Direction = state.Direction;
+            PlayerData.MovementType = state.MovementType;
+            PlayerData.Rank = (byte)account.Rank;
+
             PlayerData.IsAuthenticated = true;
         }
 
