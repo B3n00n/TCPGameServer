@@ -14,8 +14,6 @@ namespace GameServer.Server.Core
 {
     public class GameServer
     {
-        private readonly DatabaseInitializer _dbInitializer;
-
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
         private readonly UserService _userService;
@@ -38,7 +36,6 @@ namespace GameServer.Server.Core
             _playerIndexPool = new Pool<PlayerData>(5000);
 
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
-            _dbInitializer = new DatabaseInitializer(db);
 
             _userService = new UserService(db);
             _chatService = new ChatService(_clients);
@@ -127,8 +124,6 @@ namespace GameServer.Server.Core
 
         public async Task StartAsync()
         {
-            await _dbInitializer.InitializeAsync();
-
             _isRunning = true;
             _listener.Start();
             Console.WriteLine($"Server started on port {GameConfig.PORT}");
