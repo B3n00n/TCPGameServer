@@ -41,8 +41,7 @@ namespace GameServer.Handlers
         {
             var writer = new PacketWriter();
             writer.WriteU8(4); // Chat opcode
-            var totalLength = 4 + Encoding.ASCII.GetByteCount(sender.PlayerData.Username)
-                              + 4 + Encoding.ASCII.GetByteCount(message) + 1;
+            var totalLength = 4 + Encoding.ASCII.GetByteCount(sender.PlayerData.Username) + 4 + Encoding.ASCII.GetByteCount(message) + 1;
             writer.WriteU16((ushort)totalLength);
             writer.WriteString(sender.PlayerData.Username);
             writer.WriteString(message);
@@ -53,7 +52,7 @@ namespace GameServer.Handlers
             var tasks = new List<ValueTask>();
             foreach (var client in _clients.Values)
             {
-                if (client.PlayerData.IsAuthenticated && client != sender)
+                if (client.PlayerData.IsAuthenticated)
                 {
                     tasks.Add(client.GetStream().WriteAsync(responseData));
                 }
