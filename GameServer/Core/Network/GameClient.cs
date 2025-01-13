@@ -31,11 +31,11 @@ namespace GameServer.Core.Network
         {
             PlayerData.Username = account.Username;
             PlayerData.AccountId = account.Id;
+            PlayerData.IsMuted = account.IsMuted;
             PlayerData.Position = new Position(state.PositionX, state.PositionY);
             PlayerData.Direction = state.Direction;
             PlayerData.MovementType = state.MovementType;
             PlayerData.Rank = (byte)account.Rank;
-
             PlayerData.IsAuthenticated = true;
         }
 

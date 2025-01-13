@@ -5,6 +5,7 @@
     public required string Password { get; set; }
     public int Rank { get; set; }
     public bool IsBanned { get; set; }
+    public bool IsMuted { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 }

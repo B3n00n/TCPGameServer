@@ -1,20 +1,25 @@
 ﻿using System.Collections.Concurrent;
 using GameServer.Core.Network;
 using GameServer.Handlers;
+using GameServer.Infrastructure.Repositories;
 
 namespace GameServer.Core.Chat
 {
     public class CommandHandler
     {
+        private readonly AccountRepository _accountRepository;
+
         private readonly Dictionary<string, IChatCommand> _commands;
         private readonly ConcurrentDictionary<string, GameClient> _clients;
         private readonly Dictionary<int, string> _rankHelpMessages;
 
-        public CommandHandler(ConcurrentDictionary<string, GameClient> clients)
+        public CommandHandler(ConcurrentDictionary<string, GameClient> clients, AccountRepository accountRepository)
         {
             _clients = clients;
             _commands = new Dictionary<string, IChatCommand>(StringComparer.OrdinalIgnoreCase);
             _rankHelpMessages = new Dictionary<int, string>();
+
+            _accountRepository = accountRepository;
 
             RegisterCommands();
             GenerateHelpMessages();
@@ -25,6 +30,10 @@ namespace GameServer.Core.Chat
             RegisterCommand(new OnlineCommand(_clients));
             RegisterCommand(new BroadcastCommand());
             RegisterCommand(new KickCommand(_clients));
+            RegisterCommand(new BanCommand(_clients, _accountRepository));
+            RegisterCommand(new UnbanCommand(_clients, _accountRepository));
+            RegisterCommand(new MuteCommand(_clients, _accountRepository));
+            RegisterCommand(new UnmuteCommand(_clients, _accountRepository));
 
             RegisterCommand(new HelpCommand(_rankHelpMessages));
         }

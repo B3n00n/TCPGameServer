@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using GameServer.Core.Network;
 using GameServer.Handlers;
+using GameServer.Infrastructure.Repositories;
 
 namespace GameServer.Core.Chat
 {
@@ -9,10 +10,10 @@ namespace GameServer.Core.Chat
         private readonly ChatPacketHandler _chatPacketHandler;
         private readonly CommandHandler _commandHandler;
 
-        public ChatService(ConcurrentDictionary<string, GameClient> clients)
+        public ChatService(ConcurrentDictionary<string, GameClient> clients, AccountRepository accountRepository)
         {
             _chatPacketHandler = new ChatPacketHandler(clients);
-            _commandHandler = new CommandHandler(clients);
+            _commandHandler = new CommandHandler(clients, accountRepository);
         }
 
         public async Task HandlePacket(GameClient sender, PacketReader reader)

@@ -8,6 +8,7 @@ using GameServer.Infrastructure.Config;
 using GameServer.Infrastructure.Database;
 using GameServer.Core.Network;
 using GameServer.Core.Chat;
+using GameServer.Infrastructure.Repositories;
 
 namespace GameServer.Server.Core
 {
@@ -18,6 +19,11 @@ namespace GameServer.Server.Core
         private readonly UserService _userService;
         private readonly ChatService _chatService;
         private readonly Pool<PlayerData> _playerIndexPool;
+
+        #region Repositories
+        private readonly AccountRepository _accountRepository;
+        private readonly AccountStateRepository _stateRepository;
+        #endregion
 
         #region Packet Handlers
         private readonly HandshakePacketHandler _handshakeHandler;
@@ -36,8 +42,11 @@ namespace GameServer.Server.Core
 
             var db = new DatabaseContext(GameConfig.CONNECTION_STRING);
 
-            _userService = new UserService(db);
-            _chatService = new ChatService(_clients);
+            _accountRepository = new AccountRepository(db);
+            _stateRepository = new AccountStateRepository(db);
+
+            _userService = new UserService(_accountRepository, _stateRepository);
+            _chatService = new ChatService(_clients, _accountRepository);
 
             // Initialize all packet handlers
             _handshakeHandler = new HandshakePacketHandler();

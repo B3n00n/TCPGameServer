@@ -41,6 +41,7 @@ namespace GameServer.Infrastructure
                     Password TEXT NOT NULL,
                     Rank INTEGER NOT NULL DEFAULT 0,
                     IsBanned BOOLEAN NOT NULL DEFAULT 0,
+                    IsMuted BOOLEAN NOT NULL DEFAULT 0,
                     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     LastLoginAt DATETIME,
                     UNIQUE(Username COLLATE NOCASE)

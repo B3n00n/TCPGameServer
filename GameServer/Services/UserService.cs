@@ -2,19 +2,18 @@
 using GameServer.Domain.Models;
 using GameServer.Handlers;
 using GameServer.Infrastructure.Config;
-using GameServer.Infrastructure.Database;
 using GameServer.Infrastructure.Repositories;
 using System.Collections.Concurrent;
 
 public class UserService
 {
-    private readonly AccountRepository _accountRepo;
-    private readonly AccountStateRepository _stateRepo;
+    private readonly AccountRepository _accountRepository;
+    private readonly AccountStateRepository _stateRepository;
 
-    public UserService(DatabaseContext db)
+    public UserService(AccountRepository accountRepo, AccountStateRepository stateRepository)
     {
-        _accountRepo = new AccountRepository(db);
-        _stateRepo = new AccountStateRepository(db);
+        _accountRepository = accountRepo;
+        _stateRepository = stateRepository;
     }
 
     public async Task<(LoginType Status, Account? Account, AccountState? State)> AuthenticateAsync(string username, string password, uint revision, ConcurrentDictionary<string, GameClient> activeClients)
@@ -25,7 +24,7 @@ public class UserService
         if (activeClients.ContainsKey(username))
             return (LoginType.ALREADY_ONLINE, null, null);
 
-        var account = await _accountRepo.GetByUsernameAsync(username);
+        var account = await _accountRepository.GetByUsernameAsync(username);
 
         if (account == null) return (LoginType.UNUSED, null, null);
 
@@ -36,17 +35,17 @@ public class UserService
         if (password != account.Password) return (LoginType.INVALID_CREDENTIALS, null, null);
 
 
-        var state = await _stateRepo.GetByAccountIdAsync(account.Id);
+        var state = await _stateRepository.GetByAccountIdAsync(account.Id);
 
         if (state == null) return (LoginType.COULD_NOT_COMPLETE_LOGIN, null, null);
 
-        await _accountRepo.UpdateLastLoginAsync(account.Id);
+        await _accountRepository.UpdateLastLoginAsync(account.Id);
 
         return (LoginType.ACCEPTABLE, account, state);
     }
 
     public async Task SaveUserDataAsync(int accountId, int x, int y, byte direction, byte movementType)
     {
-        await _stateRepo.UpdatePositionAsync(accountId, x, y, direction, movementType);
+        await _stateRepository.UpdatePositionAsync(accountId, x, y, direction, movementType);
     }
 }

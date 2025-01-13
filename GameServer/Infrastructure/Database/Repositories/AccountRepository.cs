@@ -1,5 +1,4 @@
-﻿using GameServer.Domain.Models;
-using GameServer.Infrastructure.Database;
+﻿using GameServer.Infrastructure.Database;
 
 namespace GameServer.Infrastructure.Repositories
 {
@@ -25,6 +24,20 @@ namespace GameServer.Infrastructure.Repositories
             await _db.ExecuteAsync(
                 $"UPDATE {TableName} SET LastLoginAt = CURRENT_TIMESTAMP WHERE Id = @Id",
                 new { Id = accountId });
+        }
+
+        public async Task SetMuteStatusAsync(string username, bool isMuted)
+        {
+            await _db.ExecuteAsync(
+                $"UPDATE {TableName} SET IsMuted = @IsMuted WHERE Username = @Username COLLATE NOCASE",
+                new { Username = username, IsMuted = isMuted });
+        }
+
+        public async Task SetBanStatusAsync(string username, bool isBanned)
+        {
+            await _db.ExecuteAsync(
+                $"UPDATE {TableName} SET IsBanned = @IsBanned WHERE Username = @Username COLLATE NOCASE",
+                new { Username = username, IsBanned = isBanned });
         }
     }
 }

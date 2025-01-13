@@ -39,6 +39,8 @@ namespace GameServer.Handlers
 
         public async Task BroadcastChatMessage(GameClient sender, string message)
         {
+            if (sender.PlayerData.IsMuted) { await SendGameMessage(sender, $"You are muted and cannot type in chat!"); return; }
+
             var writer = new PacketWriter();
             writer.WriteU8(4); // Chat opcode
             var totalLength = 4 + Encoding.ASCII.GetByteCount(sender.PlayerData.Username) + 4 + Encoding.ASCII.GetByteCount(message) + 1;
