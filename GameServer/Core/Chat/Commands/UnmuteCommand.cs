@@ -16,25 +16,17 @@ public class UnmuteCommand : IChatCommand
     }
 
     public IEnumerable<string> Triggers => ["unmute"];
-    public int RequiredRank => 4;
+    public int RequiredRank => 6;
     public string Description => "Unmutes a previously muted player";
 
     public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler packetHandler)
     {
-        if (args.Length == 0)
-        {
-            await packetHandler.SendGameMessage(sender, "Usage: /unmute <username>");
-            return;
-        }
+        if (args.Length == 0) { await packetHandler.SendGameMessage(sender, "Usage: /unmute <username>"); return; }
 
         string targetUsername = args[0];
 
         var targetAccount = await _accountRepository.GetByUsernameAsync(targetUsername);
-        if (targetAccount == null)
-        {
-            await packetHandler.SendGameMessage(sender, $"Player {targetUsername} not found.");
-            return;
-        }
+        if (targetAccount == null) { await packetHandler.SendGameMessage(sender, $"Player {targetUsername} not found."); return; }
 
         await _accountRepository.SetMuteStatusAsync(targetUsername, false);
 
@@ -45,9 +37,7 @@ public class UnmuteCommand : IChatCommand
         }
 
         string unmuteMessage = $"{targetUsername} has been unmuted by {sender.PlayerData.Username}.";
-        var tasks = _clients.Values
-            .Where(client => client.PlayerData.Rank >= 4)
-            .Select(client => packetHandler.SendGameMessage(client, unmuteMessage));
+        var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, unmuteMessage));
 
         await Task.WhenAll(tasks);
     }

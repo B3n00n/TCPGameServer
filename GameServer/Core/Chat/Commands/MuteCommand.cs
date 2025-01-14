@@ -17,32 +17,20 @@ namespace GameServer.Core.Chat
         }
 
         public IEnumerable<string> Triggers => ["mute"];
-        public int RequiredRank => 4;
+        public int RequiredRank => 6;
         public string Description => "Mutes a player preventing them from chatting";
 
         public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler packetHandler)
         {
-            if (args.Length == 0)
-            {
-                await packetHandler.SendGameMessage(sender, "Usage: /mute <username> [reason]");
-                return;
-            }
+            if (args.Length == 0) { await packetHandler.SendGameMessage(sender, "Usage: /mute <username> [reason]"); return; }
 
             string targetUsername = args[0];
             string reason = args.Length > 1 ? string.Join(" ", args.Skip(1)) : "No reason provided";
 
             var targetAccount = await _accountRepository.GetByUsernameAsync(targetUsername);
-            if (targetAccount == null)
-            {
-                await packetHandler.SendGameMessage(sender, $"Player {targetUsername} not found.");
-                return;
-            }
 
-            if (targetAccount.Rank >= sender.PlayerData.Rank)
-            {
-                await packetHandler.SendGameMessage(sender, "You cannot mute players of equal or higher rank.");
-                return;
-            }
+            if (targetAccount == null) { await packetHandler.SendGameMessage(sender, $"Player {targetUsername} not found."); return; }
+            if (targetAccount.Rank >= sender.PlayerData.Rank) { await packetHandler.SendGameMessage(sender, "You cannot mute players of equal or higher rank."); return; }
 
             await _accountRepository.SetMuteStatusAsync(targetUsername, true);
 
@@ -53,9 +41,7 @@ namespace GameServer.Core.Chat
             }
 
             string muteMessage = $"<col=FF0000>{targetUsername} has been muted by {sender.PlayerData.Username}. Reason: {reason}";
-            var tasks = _clients.Values
-                .Where(client => client.PlayerData.Rank >= 4)
-                .Select(client => packetHandler.SendGameMessage(client, muteMessage));
+            var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, muteMessage));
 
             await Task.WhenAll(tasks);
         }

@@ -28,9 +28,9 @@ namespace GameServer.Core.Chat
 
             if (targetClient.PlayerData.Rank >= sender.PlayerData.Rank) { await packetHandler.SendGameMessage(sender, "You cannot kick your superiors."); return; }
 
-            // Broadcast kick message only to staff members of equal or higher rank
+            // Broadcast kick message only to higher ranks.
             string kickMessage = $"<col=FF0000>{targetUsername} has been kicked by {sender.PlayerData.Username}. Reason: {reason}";
-            var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= sender.PlayerData.Rank).Select(client => packetHandler.SendGameMessage(client, kickMessage));
+            var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, kickMessage));
             await Task.WhenAll(tasks);
 
             targetClient.Disconnect();
