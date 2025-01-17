@@ -16,7 +16,7 @@ namespace GameServer.Core.Chat
             _commandHandler = new CommandHandler(clients, accountRepository);
         }
 
-        public async Task HandlePacket(GameClient sender, PacketReader reader)
+        public async Task HandleChat(GameClient sender, PacketReader reader)
         {
             var message = await _chatPacketHandler.ReadMessage(sender, reader);
             if (message == null) return;

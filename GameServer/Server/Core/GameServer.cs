@@ -101,7 +101,7 @@ namespace GameServer.Server.Core
                             break;
                         case 4:  // Chat message
                             if (client.PlayerData.IsAuthenticated)
-                                await _chatService.HandlePacket(client, client.GetReader());
+                                await _chatService.HandleChat(client, client.GetReader());
                             break;
                         case 10: // Login
                             var (status, account, state) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
