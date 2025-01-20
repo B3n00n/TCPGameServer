@@ -1,6 +1,6 @@
-﻿using System.Collections.Concurrent;
-using GameServer.Core.Network;
+﻿using GameServer.Core.Network;
 using GameServer.Domain.Models.Player;
+using System.Collections.Concurrent;
 
 public class PlayerPacketHandler
 {
@@ -35,49 +35,38 @@ public class PlayerPacketHandler
     {
         try
         {
+            // Broadcast new player to all clients (including themselves)
+            foreach (var recipient in clients.Values.Where(c => c.PlayerData.IsAuthenticated))
+            {
+                var packet = CreatePacket(29, buffer =>
+                {
+                    buffer.WriteBits(4, 1);  // Spawn mask
+                    buffer.WriteBits(11, recipient == newPlayer ? 2047 : newPlayer.PlayerData.Index);
+                    buffer.WriteString(newPlayer.PlayerData.Username);
+                    buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.X);
+                    buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.Y);
+                    buffer.WriteBits(3, newPlayer.PlayerData.Direction);
+                    buffer.WriteBits(3, newPlayer.PlayerData.MovementType);
+                });
+
+                await recipient.GetStream().WriteAsync(packet).ConfigureAwait(false);
+            }
+
             // Send existing players to new player
-            foreach (var existingClient in clients.Values)
+            foreach (var existingClient in clients.Values.Where(c => c.PlayerData.IsAuthenticated && c != newPlayer))
             {
-                if (existingClient != newPlayer && existingClient.PlayerData.IsAuthenticated)
+                var packet = CreatePacket(29, buffer =>
                 {
-                    var existingPlayerPacket = CreatePacket(29, buffer =>
-                    {
-                        buffer.WriteBits(4, 1);  // Spawn mask
-                        buffer.WriteBits(11, existingClient.PlayerData.Index);
-                        buffer.WriteString(existingClient.PlayerData.Username);
-                        buffer.WriteBits(16, (int)existingClient.PlayerData.Position.X);
-                        buffer.WriteBits(16, (int)existingClient.PlayerData.Position.Y);
-                        buffer.WriteBits(3, existingClient.PlayerData.Direction);
-                        buffer.WriteBits(3, existingClient.PlayerData.MovementType);
-                    });
+                    buffer.WriteBits(4, 1);  // Spawn mask
+                    buffer.WriteBits(11, existingClient.PlayerData.Index);
+                    buffer.WriteString(existingClient.PlayerData.Username);
+                    buffer.WriteBits(16, (int)existingClient.PlayerData.Position.X);
+                    buffer.WriteBits(16, (int)existingClient.PlayerData.Position.Y);
+                    buffer.WriteBits(3, existingClient.PlayerData.Direction);
+                    buffer.WriteBits(3, existingClient.PlayerData.MovementType);
+                });
 
-                    await newPlayer.GetStream().WriteAsync(existingPlayerPacket).ConfigureAwait(false);
-                }
-            }
-
-            // Broadcast new player to others
-            var newPlayerPacket = CreatePacket(29, buffer =>
-            {
-                buffer.WriteBits(4, 1);  // Spawn mask
-                buffer.WriteBits(11, newPlayer.PlayerData.Index);
-                buffer.WriteString(newPlayer.PlayerData.Username);
-                buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.X);
-                buffer.WriteBits(16, (int)newPlayer.PlayerData.Position.Y);
-                buffer.WriteBits(3, newPlayer.PlayerData.Direction);
-                buffer.WriteBits(3, newPlayer.PlayerData.MovementType);
-            });
-
-            var tasks = new List<ValueTask>();
-            foreach (var client in clients.Values)
-            {
-                if (client != newPlayer && client.PlayerData.IsAuthenticated)
-                {
-                    tasks.Add(client.GetStream().WriteAsync(newPlayerPacket));
-                }
-            }
-            foreach (var task in tasks)
-            {
-                await task.ConfigureAwait(false);
+                await newPlayer.GetStream().WriteAsync(packet).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -90,24 +79,17 @@ public class PlayerPacketHandler
     {
         try
         {
-            var logoutPacket = CreatePacket(29, buffer =>
+            var packet = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 2);  // Remove mask
                 buffer.WriteBits(11, disconnectedClient.PlayerData.Index);
             });
 
-            var tasks = new List<ValueTask>();
-            foreach (var client in clients.Values)
-            {
-                if (client != disconnectedClient && client.PlayerData.IsAuthenticated)
-                {
-                    tasks.Add(client.GetStream().WriteAsync(logoutPacket));
-                }
-            }
-            foreach (var task in tasks)
-            {
-                await task.ConfigureAwait(false);
-            }
+            var tasks = clients.Values
+                .Where(c => c.PlayerData.IsAuthenticated && c != disconnectedClient)
+                .Select(c => c.GetStream().WriteAsync(packet).AsTask());
+
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
@@ -128,7 +110,7 @@ public class PlayerPacketHandler
             sourceClient.PlayerData.Direction = direction;
             sourceClient.PlayerData.MovementType = movementType;
 
-            var movementPacket = CreatePacket(29, buffer =>
+            var packet = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 5);  // Movement mask
                 buffer.WriteBits(11, sourceClient.PlayerData.Index);
@@ -138,18 +120,11 @@ public class PlayerPacketHandler
                 buffer.WriteBits(3, movementType);
             });
 
-            var tasks = new List<ValueTask>();
-            foreach (var client in clients.Values)
-            {
-                if (client != sourceClient && client.PlayerData.IsAuthenticated)
-                {
-                    tasks.Add(client.GetStream().WriteAsync(movementPacket));
-                }
-            }
-            foreach (var task in tasks)
-            {
-                await task.ConfigureAwait(false);
-            }
+            var tasks = clients.Values
+                .Where(c => c.PlayerData.IsAuthenticated && c != sourceClient)
+                .Select(c => c.GetStream().WriteAsync(packet).AsTask());
+
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
