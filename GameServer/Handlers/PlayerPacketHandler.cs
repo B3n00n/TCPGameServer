@@ -85,9 +85,7 @@ public class PlayerPacketHandler
                 buffer.WriteBits(11, disconnectedClient.PlayerData.Index);
             });
 
-            var tasks = clients.Values
-                .Where(c => c.PlayerData.IsAuthenticated && c != disconnectedClient)
-                .Select(c => c.GetStream().WriteAsync(packet).AsTask());
+            var tasks = clients.Values.Where(c => c.PlayerData.IsAuthenticated && c != disconnectedClient).Select(c => c.GetStream().WriteAsync(packet).AsTask());
 
             await Task.WhenAll(tasks);
         }
@@ -120,9 +118,7 @@ public class PlayerPacketHandler
                 buffer.WriteBits(3, movementType);
             });
 
-            var tasks = clients.Values
-                .Where(c => c.PlayerData.IsAuthenticated && c != sourceClient)
-                .Select(c => c.GetStream().WriteAsync(packet).AsTask());
+            var tasks = clients.Values.Where(client => client.PlayerData.IsAuthenticated && client != sourceClient).Select(c => c.GetStream().WriteAsync(packet).AsTask());
 
             await Task.WhenAll(tasks);
         }
