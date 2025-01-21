@@ -48,23 +48,20 @@ namespace GameServer.Handlers
             var username = await readBuffer.ReadString();
             var password = await readBuffer.ReadString();
 
-            var (status, account, state) = await _userService.AuthenticateAsync(username, password, revision, activeClients);
+            var result = await _userService.AuthenticateAsync(username, password, revision, activeClients);
 
             var response = new PacketWriter();
-            response.WriteU8((byte)status);
+            response.WriteU8((byte)result.Status);
 
-            if (status == LoginType.ACCEPTABLE && account != null && state != null)
+            // If login successful, send additional data
+            if (result.Status == LoginType.ACCEPTABLE && result.Account != null)
             {
-                response.WriteU8((byte)account.Rank);
-                response.WriteU16((ushort)state.PositionX);
-                response.WriteU16((ushort)state.PositionY);
-                response.WriteU8(state.Direction);
-                response.WriteU8(state.MovementType);
+                response.WriteU8((byte)result.Account.Rank);
             }
 
             await stream.WriteAsync(response.ToArray());
 
-            return (status, account, state);
+            return result;
         }
     }
 }

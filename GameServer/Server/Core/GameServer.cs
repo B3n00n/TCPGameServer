@@ -90,6 +90,8 @@ namespace GameServer.Server.Core
                 {
                     var opcode = await client.GetReader().ReadU8();
 
+                    Console.WriteLine($"Handling opcode: {opcode}");
+
                     switch (opcode)
                     {
                         case 2: // Player
@@ -109,6 +111,7 @@ namespace GameServer.Server.Core
                             {
                                 client.SetData(account, state);
                                 _clients.TryAdd(account.Username, client);
+
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
                             }
                             break;
