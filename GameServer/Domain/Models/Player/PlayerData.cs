@@ -11,5 +11,15 @@
         public bool IsAuthenticated { get; set; } = false;
         public bool IsMuted { get; set; } = false;
         public byte Rank { get; set; } = 0;
+
+
+        // Visual data
+        public byte Gender { get; set; } = 0;
+        public byte SkinTone { get; set; } = 0;
+        public byte HairType { get; set; } = 0;
+        public byte HairColor { get; set; } = 0;
+        public ushort HatId { get; set; } = 65535;
+        public ushort TopId { get; set; } = 65535;
+        public ushort LegsId { get; set; } = 65535;
     }
 }
