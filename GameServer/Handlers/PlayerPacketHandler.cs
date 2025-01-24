@@ -33,10 +33,10 @@ public class PlayerPacketHandler
 
     public async Task SendPlayerSpawn(GameClient newPlayer, ConcurrentDictionary<string, GameClient> clients)
     {
-        // Broadcast new player to all clients (including themselves)
+        // Send spawn data
         foreach (var recipient in clients.Values.Where(c => c.PlayerData.IsAuthenticated))
         {
-            var packet = CreatePacket(29, buffer =>
+            var spawnPacket = CreatePacket(29, buffer =>
             {
                 buffer.WriteBits(4, 1);  // Spawn mask
                 buffer.WriteBits(11, recipient == newPlayer ? 2047 : newPlayer.PlayerData.Index);
@@ -47,7 +47,7 @@ public class PlayerPacketHandler
                 buffer.WriteBits(3, newPlayer.PlayerData.MovementType);
             });
 
-            await recipient.GetStream().WriteAsync(packet).ConfigureAwait(false);
+            await recipient.GetStream().WriteAsync(spawnPacket);
         }
 
         // Send existing players to new player
@@ -55,7 +55,7 @@ public class PlayerPacketHandler
         {
             var packet = CreatePacket(29, buffer =>
             {
-                buffer.WriteBits(4, 1);  // Spawn mask
+                buffer.WriteBits(4, 1);
                 buffer.WriteBits(11, existingClient.PlayerData.Index);
                 buffer.WriteString(existingClient.PlayerData.Username);
                 buffer.WriteBits(16, (int)existingClient.PlayerData.Position.X);
@@ -64,7 +64,72 @@ public class PlayerPacketHandler
                 buffer.WriteBits(3, existingClient.PlayerData.MovementType);
             });
 
-            await newPlayer.GetStream().WriteAsync(packet).ConfigureAwait(false);
+            await newPlayer.GetStream().WriteAsync(packet);
+        }
+
+        // Send visual updates after spawns are complete
+        await SendPlayerVisuals(newPlayer, clients);
+    }
+
+    public async Task SendPlayerVisuals(GameClient player, ConcurrentDictionary<string, GameClient> clients)
+    {
+        // Create visual packet for this player
+        var visualsPacket = CreatePacket(29, buffer =>
+        {
+            buffer.WriteBits(4, 4);  // Visuals mask
+            buffer.WriteBits(11, 2047);  // Use 2047 when sending to themselves
+            buffer.WriteBits(2, player.PlayerData.Direction);
+            buffer.WriteBits(1, player.PlayerData.Gender);
+            buffer.WriteBits(2, player.PlayerData.SkinTone);
+            buffer.WriteBits(2, player.PlayerData.HairType);
+            buffer.WriteBits(4, player.PlayerData.HairColor);
+            buffer.WriteBits(16, player.PlayerData.HatId);
+            buffer.WriteBits(16, player.PlayerData.TopId);
+            buffer.WriteBits(16, player.PlayerData.LegsId);
+        });
+
+        // Always send to the player themselves first
+        await player.GetStream().WriteAsync(visualsPacket);
+
+        // Create packet for broadcasting to others (using their actual index)
+        var broadcastPacket = CreatePacket(29, buffer =>
+        {
+            buffer.WriteBits(4, 4);  // Visuals mask
+            buffer.WriteBits(11, player.PlayerData.Index);  // Use actual index for other clients
+            buffer.WriteBits(2, player.PlayerData.Direction);
+            buffer.WriteBits(1, player.PlayerData.Gender);
+            buffer.WriteBits(2, player.PlayerData.SkinTone);
+            buffer.WriteBits(2, player.PlayerData.HairType);
+            buffer.WriteBits(4, player.PlayerData.HairColor);
+            buffer.WriteBits(16, player.PlayerData.HatId);
+            buffer.WriteBits(16, player.PlayerData.TopId);
+            buffer.WriteBits(16, player.PlayerData.LegsId);
+        });
+
+        // Then broadcast to other clients
+        var tasks = clients.Values
+            .Where(c => c.PlayerData.IsAuthenticated && c != player)
+            .Select(c => c.GetStream().WriteAsync(broadcastPacket).AsTask());
+        await Task.WhenAll(tasks);
+
+        // Send all existing players' visuals to new player
+        foreach (var existingClient in clients.Values.Where(c => c.PlayerData.IsAuthenticated && c != player))
+        {
+            var packet = CreatePacket(29, buffer =>
+            {
+                buffer.WriteBits(4, 4);
+                buffer.WriteBits(11, existingClient.PlayerData.Index);
+                buffer.WriteBits(2, existingClient.PlayerData.Direction);
+                buffer.WriteBits(1, existingClient.PlayerData.Gender);
+                buffer.WriteBits(2, existingClient.PlayerData.SkinTone);
+                buffer.WriteBits(2, existingClient.PlayerData.HairType);
+                buffer.WriteBits(4, existingClient.PlayerData.HairColor);
+                buffer.WriteBits(16, existingClient.PlayerData.HatId);
+                buffer.WriteBits(16, existingClient.PlayerData.TopId);
+                buffer.WriteBits(16, existingClient.PlayerData.LegsId);
+            });
+
+            await player.GetStream().WriteAsync(packet);
         }
     }
 

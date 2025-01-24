@@ -42,7 +42,7 @@ namespace GameServer.Handlers
             _userService = userService;
         }
 
-        public async Task<(LoginType Status, Account? Account, AccountState? State)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
+        public async Task<(LoginType Status, Account? Account, AccountState? State, AccountVisuals? Visuals)> HandleLogin(NetworkStream stream, PacketReader readBuffer, ConcurrentDictionary<string, GameClient> activeClients)
         {
             var revision = await readBuffer.ReadU32();
             var username = await readBuffer.ReadString();
@@ -53,7 +53,6 @@ namespace GameServer.Handlers
             var response = new PacketWriter();
             response.WriteU8((byte)result.Status);
 
-            // If login successful, send additional data
             if (result.Status == LoginType.ACCEPTABLE && result.Account != null)
             {
                 response.WriteU8((byte)result.Account.Rank);

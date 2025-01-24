@@ -27,7 +27,7 @@ namespace GameServer.Core.Network
         public PacketReader GetReader() => _reader;
         public PacketWriter GetWriter() => _writer;
 
-        public void SetData(Account account, AccountState state)
+        public void SetData(Account account, AccountState state, AccountVisuals visuals)
         {
             PlayerData.Username = account.Username;
             PlayerData.AccountId = account.Id;
@@ -36,6 +36,16 @@ namespace GameServer.Core.Network
             PlayerData.Direction = state.Direction;
             PlayerData.MovementType = state.MovementType;
             PlayerData.Rank = (byte)account.Rank;
+
+            // Set visual data
+            PlayerData.Gender = (byte)visuals.Gender;
+            PlayerData.SkinTone = (byte)visuals.SkinTone;
+            PlayerData.HairType = (byte)visuals.HairType;
+            PlayerData.HairColor = (byte)visuals.HairColor;
+            PlayerData.HatId = (ushort)visuals.HatId;
+            PlayerData.TopId = (ushort)visuals.TopId;
+            PlayerData.LegsId = (ushort)visuals.LegsId;
+
             PlayerData.IsAuthenticated = true;
         }
 

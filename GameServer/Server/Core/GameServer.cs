@@ -9,6 +9,7 @@ using GameServer.Infrastructure.Database;
 using GameServer.Core.Network;
 using GameServer.Core.Chat;
 using GameServer.Infrastructure.Repositories;
+using System.Runtime.CompilerServices;
 
 namespace GameServer.Server.Core
 {
@@ -23,6 +24,7 @@ namespace GameServer.Server.Core
         #region Repositories
         private readonly AccountRepository _accountRepository;
         private readonly AccountStateRepository _stateRepository;
+        private readonly AccountVisualsRepository _accountVisualsRepository;
         #endregion
 
         #region Packet Handlers
@@ -44,8 +46,9 @@ namespace GameServer.Server.Core
 
             _accountRepository = new AccountRepository(db);
             _stateRepository = new AccountStateRepository(db);
+            _accountVisualsRepository = new AccountVisualsRepository(db);
 
-            _userService = new UserService(_accountRepository, _stateRepository);
+            _userService = new UserService(_accountRepository, _stateRepository, _accountVisualsRepository);
             _chatService = new ChatService(_clients, _accountRepository);
 
             // Initialize all packet handlers
@@ -106,10 +109,10 @@ namespace GameServer.Server.Core
                                 await _chatService.HandleChat(client, client.GetReader());
                             break;
                         case 10: // Login
-                            var (status, account, state) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
-                            if (status == LoginType.ACCEPTABLE && account != null && state != null)
+                            var (status, account, state, visuals) = await _loginHandler.HandleLogin(client.GetStream(), client.GetReader(), _clients);
+                            if (status == LoginType.ACCEPTABLE && account != null && state != null && visuals != null)
                             {
-                                client.SetData(account, state);
+                                client.SetData(account, state, visuals);
                                 _clients.TryAdd(account.Username, client);
 
                                 await _playerHandler.SendPlayerSpawn(client, _clients);
