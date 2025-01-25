@@ -73,29 +73,11 @@ public class PlayerPacketHandler
 
     public async Task SendPlayerVisuals(GameClient player, ConcurrentDictionary<string, GameClient> clients)
     {
-        // Create visual packet for this player
-        var visualsPacket = CreatePacket(29, buffer =>
-        {
-            buffer.WriteBits(4, 4);  // Visuals mask
-            buffer.WriteBits(11, 2047);  // Use 2047 when sending to themselves
-            buffer.WriteBits(2, player.PlayerData.Direction);
-            buffer.WriteBits(1, player.PlayerData.Gender);
-            buffer.WriteBits(2, player.PlayerData.SkinTone);
-            buffer.WriteBits(2, player.PlayerData.HairType);
-            buffer.WriteBits(4, player.PlayerData.HairColor);
-            buffer.WriteBits(16, player.PlayerData.HatId);
-            buffer.WriteBits(16, player.PlayerData.TopId);
-            buffer.WriteBits(16, player.PlayerData.LegsId);
-        });
-
-        // Always send to the player themselves first
-        await player.GetStream().WriteAsync(visualsPacket);
-
-        // Create packet for broadcasting to others (using their actual index)
+        // Create one packet for broadcasting this player's visuals
         var broadcastPacket = CreatePacket(29, buffer =>
         {
             buffer.WriteBits(4, 4);  // Visuals mask
-            buffer.WriteBits(11, player.PlayerData.Index);  // Use actual index for other clients
+            buffer.WriteBits(11, player.PlayerData.Index);
             buffer.WriteBits(2, player.PlayerData.Direction);
             buffer.WriteBits(1, player.PlayerData.Gender);
             buffer.WriteBits(2, player.PlayerData.SkinTone);
@@ -104,33 +86,57 @@ public class PlayerPacketHandler
             buffer.WriteBits(16, player.PlayerData.HatId);
             buffer.WriteBits(16, player.PlayerData.TopId);
             buffer.WriteBits(16, player.PlayerData.LegsId);
+            buffer.WriteBits(3, player.PlayerData.MovementType);
         });
 
-        // Then broadcast to other clients
-        var tasks = clients.Values
-            .Where(c => c.PlayerData.IsAuthenticated && c != player)
-            .Select(c => c.GetStream().WriteAsync(broadcastPacket).AsTask());
-        await Task.WhenAll(tasks);
-
-        // Send all existing players' visuals to new player
-        foreach (var existingClient in clients.Values.Where(c => c.PlayerData.IsAuthenticated && c != player))
+        // Create their "self view" packet (index 2047)
+        var selfPacket = CreatePacket(29, buffer =>
         {
-            var packet = CreatePacket(29, buffer =>
-            {
-                buffer.WriteBits(4, 4);
-                buffer.WriteBits(11, existingClient.PlayerData.Index);
-                buffer.WriteBits(2, existingClient.PlayerData.Direction);
-                buffer.WriteBits(1, existingClient.PlayerData.Gender);
-                buffer.WriteBits(2, existingClient.PlayerData.SkinTone);
-                buffer.WriteBits(2, existingClient.PlayerData.HairType);
-                buffer.WriteBits(4, existingClient.PlayerData.HairColor);
-                buffer.WriteBits(16, existingClient.PlayerData.HatId);
-                buffer.WriteBits(16, existingClient.PlayerData.TopId);
-                buffer.WriteBits(16, existingClient.PlayerData.LegsId);
-            });
+            buffer.WriteBits(4, 4);  // Visuals mask
+            buffer.WriteBits(11, 2047);
+            buffer.WriteBits(2, player.PlayerData.Direction);
+            buffer.WriteBits(1, player.PlayerData.Gender);
+            buffer.WriteBits(2, player.PlayerData.SkinTone);
+            buffer.WriteBits(2, player.PlayerData.HairType);
+            buffer.WriteBits(4, player.PlayerData.HairColor);
+            buffer.WriteBits(16, player.PlayerData.HatId);
+            buffer.WriteBits(16, player.PlayerData.TopId);
+            buffer.WriteBits(16, player.PlayerData.LegsId);
+            buffer.WriteBits(3, player.PlayerData.MovementType);
+        });
 
-            await player.GetStream().WriteAsync(packet);
+        // Send player their own visuals and broadcast their visuals to others
+        var tasks = new List<Task>();
+        tasks.Add(player.GetStream().WriteAsync(selfPacket).AsTask());
+
+        // Send other players' visuals to this player and broadcast this player's visuals
+        foreach (var client in clients.Values)
+        {
+            if (client != player && client.PlayerData.IsAuthenticated)
+            {
+                // Send this player's visuals to other client
+                tasks.Add(client.GetStream().WriteAsync(broadcastPacket).AsTask());
+
+                // Send other client's visuals to this player
+                var packet = CreatePacket(29, buffer =>
+                {
+                    buffer.WriteBits(4, 4);
+                    buffer.WriteBits(11, client.PlayerData.Index);
+                    buffer.WriteBits(2, client.PlayerData.Direction);
+                    buffer.WriteBits(1, client.PlayerData.Gender);
+                    buffer.WriteBits(2, client.PlayerData.SkinTone);
+                    buffer.WriteBits(2, client.PlayerData.HairType);
+                    buffer.WriteBits(4, client.PlayerData.HairColor);
+                    buffer.WriteBits(16, client.PlayerData.HatId);
+                    buffer.WriteBits(16, client.PlayerData.TopId);
+                    buffer.WriteBits(16, client.PlayerData.LegsId);
+                    buffer.WriteBits(3, client.PlayerData.MovementType);
+                });
+                tasks.Add(player.GetStream().WriteAsync(packet).AsTask());
+            }
         }
+
+        await Task.WhenAll(tasks);
     }
 
     public async Task HandleLogout(GameClient disconnectedClient, ConcurrentDictionary<string, GameClient> clients)
