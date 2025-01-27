@@ -47,5 +47,6 @@ public class UserService
     public async Task SaveUserDataAsync(int accountId, int x, int y, byte direction, byte movementType)
     {
         await _stateRepository.UpdatePositionAsync(accountId, x, y, direction, movementType);
+        // TODO: save visuals...
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using GameServer.Core.Events;
 using GameServer.Core.Network;
 using GameServer.Handlers;
 using GameServer.Infrastructure.Repositories;
@@ -34,6 +35,8 @@ namespace GameServer.Core.Chat
             }
 
             await _chatPacketHandler.BroadcastChatMessage(sender, message);
+
+            PlayerEvents.OnChatMessageSent?.Invoke(sender, message);
         }
     }
 }

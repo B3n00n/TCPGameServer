@@ -177,4 +177,30 @@ public class PlayerPacketHandler
 
         await Task.WhenAll(tasks);
     }
+
+    public async Task BroadcastChatBubble(GameClient sourceClient, string message, ConcurrentDictionary<string, GameClient> clients)
+    {
+        var packet = CreatePacket(29, buffer =>
+        {
+            buffer.WriteBits(4, 8);  // Chat bubble mask
+            buffer.WriteBits(11, sourceClient.PlayerData.Index);
+            buffer.WriteString(message);
+        });
+
+        var tasks = clients.Values
+            .Where(client => client.PlayerData.IsAuthenticated && client != sourceClient)
+            .Select(c => c.GetStream().WriteAsync(packet).AsTask());
+
+        // Send to the source client with index 2047
+        var selfPacket = CreatePacket(29, buffer =>
+        {
+            buffer.WriteBits(4, 8);  // Chat bubble mask
+            buffer.WriteBits(11, 2047); // Self index
+            buffer.WriteString(message);
+        });
+
+        tasks = tasks.Append(sourceClient.GetStream().WriteAsync(selfPacket).AsTask());
+
+        await Task.WhenAll(tasks);
+    }
 }

@@ -10,6 +10,7 @@ using GameServer.Core.Network;
 using GameServer.Core.Chat;
 using GameServer.Infrastructure.Repositories;
 using System.Runtime.CompilerServices;
+using GameServer.Core.Events;
 
 namespace GameServer.Server.Core
 {
@@ -56,6 +57,11 @@ namespace GameServer.Server.Core
             _loginHandler = new LoginPacketHandler(_userService);
             _utilsHandler = new UtilsPacketHandler();
             _playerHandler = new PlayerPacketHandler();
+
+            PlayerEvents.OnChatMessageSent += async (sender, message) =>
+            {
+                await _playerHandler.BroadcastChatBubble(sender, message, _clients);
+            };
         }
 
         private async Task HandleClientAsync(TcpClient tcpClient)
