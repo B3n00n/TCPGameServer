@@ -30,18 +30,21 @@ namespace GameServer.Core.Chat
             var targetAccount = await _accountRepository.GetByUsernameAsync(targetUsername);
 
             if (targetAccount == null) { await packetHandler.SendGameMessage(sender, $"Player {targetUsername} not found."); return; }
-            if (targetAccount.Rank >= sender.PlayerData.Rank) { await packetHandler.SendGameMessage(sender, "You cannot mute players of equal or higher rank."); return; }
+            if (targetAccount.Rank >= sender.Data.Rank) { await packetHandler.SendGameMessage(sender, "You cannot mute players of equal or higher rank."); return; }
 
             await _accountRepository.SetMuteStatusAsync(targetUsername, true);
 
             if (_clients.TryGetValue(targetUsername, out var targetClient))
             {
-                targetClient.PlayerData.IsMuted = true;
-                await packetHandler.SendGameMessage(targetClient, "You have been muted.");
+                if (targetClient.Data.Account != null)
+                {
+                    targetClient.Data.Account.IsMuted = false;
+                    await packetHandler.SendGameMessage(targetClient, "You have been unmuted.");
+                }
             }
 
-            string muteMessage = $"<col=FF0000>{targetUsername} has been muted by {sender.PlayerData.Username}. Reason: {reason}";
-            var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, muteMessage));
+            string muteMessage = $"<col=FF0000>{targetUsername} has been muted by {sender.Data.Username}. Reason: {reason}";
+            var tasks = _clients.Values.Where(client => client.Data.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, muteMessage));
 
             await Task.WhenAll(tasks);
         }

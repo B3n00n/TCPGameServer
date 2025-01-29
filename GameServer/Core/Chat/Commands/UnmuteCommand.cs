@@ -32,12 +32,15 @@ public class UnmuteCommand : IChatCommand
 
         if (_clients.TryGetValue(targetUsername, out var targetClient))
         {
-            targetClient.PlayerData.IsMuted = false;
-            await packetHandler.SendGameMessage(targetClient, "You have been unmuted.");
+            if (targetClient.Data.Account != null)
+            {
+                targetClient.Data.Account.IsMuted = false;
+                await packetHandler.SendGameMessage(targetClient, "You have been unmuted.");
+            }
         }
 
-        string unmuteMessage = $"{targetUsername} has been unmuted by {sender.PlayerData.Username}.";
-        var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, unmuteMessage));
+        string unmuteMessage = $"{targetUsername} has been unmuted by {sender.Data.Username}.";
+        var tasks = _clients.Values.Where(client => client.Data.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, unmuteMessage));
 
         await Task.WhenAll(tasks);
     }

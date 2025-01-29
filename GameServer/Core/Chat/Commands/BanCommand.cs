@@ -29,12 +29,12 @@ public class BanCommand : IChatCommand
         var targetAccount = await _accountRepository.GetByUsernameAsync(targetUsername);
         if (targetAccount == null) { await packetHandler.SendGameMessage(sender, $"Player {targetUsername} not found."); return; }
 
-        if (targetAccount.Rank >= sender.PlayerData.Rank) { await packetHandler.SendGameMessage(sender, "You cannot ban your superiors."); return; }
+        if (targetAccount.Rank >= sender.Data.Rank) { await packetHandler.SendGameMessage(sender, "You cannot ban your superiors."); return; }
 
         await _accountRepository.SetBanStatusAsync(targetUsername, true);
 
-        string banMessage = $"{targetUsername} has been banned by {sender.PlayerData.Username}.";
-        var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, banMessage));
+        string banMessage = $"{targetUsername} has been banned by {sender.Data.Username}.";
+        var tasks = _clients.Values.Where(client => client.Data.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, banMessage));
 
         if (_clients.TryGetValue(targetUsername, out var targetClient)) targetClient.Disconnect();
     }

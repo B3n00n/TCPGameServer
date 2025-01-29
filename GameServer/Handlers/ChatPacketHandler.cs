@@ -39,22 +39,22 @@ namespace GameServer.Handlers
 
         public async Task BroadcastChatMessage(GameClient sender, string message)
         {
-            if (sender.PlayerData.IsMuted) { await SendGameMessage(sender, $"You are muted and cannot type in chat!"); return; }
+            if (sender.Data.IsMuted) { await SendGameMessage(sender, $"You are muted and cannot type in chat!"); return; }
 
             var writer = new PacketWriter();
             writer.WriteU8(4); // Chat opcode
-            var totalLength = 4 + Encoding.ASCII.GetByteCount(sender.PlayerData.Username) + 4 + Encoding.ASCII.GetByteCount(message) + 1;
+            var totalLength = 4 + Encoding.ASCII.GetByteCount(sender.Data.Username) + 4 + Encoding.ASCII.GetByteCount(message) + 1;
             writer.WriteU16((ushort)totalLength);
-            writer.WriteString(sender.PlayerData.Username);
+            writer.WriteString(sender.Data.Username);
             writer.WriteString(message);
-            writer.WriteU8(sender.PlayerData.Rank);
+            writer.WriteU8(sender.Data.Rank);
 
             var responseData = writer.ToArray();
 
             var tasks = new List<ValueTask>();
             foreach (var client in _clients.Values)
             {
-                if (client.PlayerData.IsAuthenticated)
+                if (client.Data.IsAuthenticated)
                 {
                     tasks.Add(client.GetStream().WriteAsync(responseData));
                 }
@@ -65,7 +65,7 @@ namespace GameServer.Handlers
 
         public async Task SendGameMessage(GameClient client, string message)
         {
-            if (!client.PlayerData.IsAuthenticated) return;
+            if (!client.Data.IsAuthenticated) return;
 
             var writer = new PacketWriter();
             writer.WriteU8(6);  // Game message opcode
@@ -87,7 +87,7 @@ namespace GameServer.Handlers
 
             foreach (var client in _clients.Values)
             {
-                if (client.PlayerData.IsAuthenticated)
+                if (client.Data.IsAuthenticated)
                 {
                     tasks.Add(client.GetStream().WriteAsync(packet));
                 }

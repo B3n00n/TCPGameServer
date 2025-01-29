@@ -19,7 +19,7 @@ namespace GameServer.Core.Chat
 
         public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler chatPacketHandler)
         {
-            int onlineCount = _clients.Count(x => x.Value.PlayerData.IsAuthenticated);
+            int onlineCount = _clients.Count(x => x.Value.Data.IsAuthenticated);
             await chatPacketHandler.SendGameMessage(sender, $"Users Online: {onlineCount}");
         }
     }

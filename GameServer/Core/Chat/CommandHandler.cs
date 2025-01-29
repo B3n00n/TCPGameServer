@@ -52,7 +52,7 @@ namespace GameServer.Core.Chat
 
             if (_commands.TryGetValue(commandTrigger, out var command))
             {
-                if (sender.PlayerData.Rank >= command.RequiredRank)
+                if (sender.Data.Rank >= command.RequiredRank)
                 {
                     try
                     {

@@ -27,8 +27,8 @@ public class UnbanCommand : IChatCommand
         await _accountRepository.SetBanStatusAsync(targetUsername, false);
 
         // Notify staff
-        string unbanMessage = $"{targetUsername} has been unbanned by {sender.PlayerData.Username}.";
-        var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, unbanMessage));
+        string unbanMessage = $"{targetUsername} has been unbanned by {sender.Data.Username}.";
+        var tasks = _clients.Values.Where(client => client.Data.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, unbanMessage));
 
         await Task.WhenAll(tasks);
     }

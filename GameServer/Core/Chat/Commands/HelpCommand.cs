@@ -18,7 +18,7 @@ namespace GameServer.Core.Chat
 
         public async Task ExecuteAsync(GameClient sender, string[] args, ChatPacketHandler chatPacketHandler)
         {
-            await chatPacketHandler.SendGameMessage(sender, _rankHelpMessages[sender.PlayerData.Rank]);
+            await chatPacketHandler.SendGameMessage(sender, _rankHelpMessages[sender.Data.Rank]);
         }
     }
 }

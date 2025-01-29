@@ -36,7 +36,7 @@ namespace GameServer.Core.Chat
 
             await _chatPacketHandler.BroadcastChatMessage(sender, message);
 
-            PlayerEvents.OnChatMessageSent?.Invoke(sender, message);
+            ChatEvents.OnChatMessageSent?.Invoke(sender, message);
         }
     }
 }

@@ -6,10 +6,8 @@ using GameServer.Core;
 using GameServer.Domain.Models.Player;
 using GameServer.Infrastructure.Config;
 using GameServer.Infrastructure.Database;
-using GameServer.Core.Network;
 using GameServer.Core.Chat;
 using GameServer.Infrastructure.Repositories;
-using System.Runtime.CompilerServices;
 using GameServer.Core.Events;
 
 namespace GameServer.Server.Core
@@ -58,10 +56,7 @@ namespace GameServer.Server.Core
             _utilsHandler = new UtilsPacketHandler();
             _playerHandler = new PlayerPacketHandler();
 
-            PlayerEvents.OnChatMessageSent += async (sender, message) =>
-            {
-                await _playerHandler.BroadcastChatBubble(sender, message, _clients);
-            };
+            ChatEvents.OnChatMessageSent += async (sender, message) => await _playerHandler.BroadcastChatBubble(sender, message, _clients);
         }
 
         private async Task HandleClientAsync(TcpClient tcpClient)
@@ -79,14 +74,14 @@ namespace GameServer.Server.Core
             }
             finally
             {
-                if (!string.IsNullOrEmpty(client.PlayerData.Username))
+                if (!string.IsNullOrEmpty(client.Data.Username))
                 {
-                    await _userService.SaveUserDataAsync(client.PlayerData.AccountId, client.PlayerData.Position.X, client.PlayerData.Position.Y, client.PlayerData.Direction, client.PlayerData.MovementType);
+                    await _userService.SaveUserDataAsync(client.Data.AccountId, client.Data.Position.X, client.Data.Position.Y, client.Data.Direction, client.Data.MovementType);
                     await _playerHandler.HandleLogout(client, _clients);
-                    _clients.TryRemove(client.PlayerData.Username, out _);
+                    _clients.TryRemove(client.Data.Username, out _);
                 }
 
-                _playerIndexPool.Return(client.PlayerData.Index);
+                _playerIndexPool.Return(client.Data.Index);
                 client.Disconnect();
             }
         }
@@ -104,14 +99,14 @@ namespace GameServer.Server.Core
                     switch (opcode)
                     {
                         case 2: // Player
-                            if (client.PlayerData.IsAuthenticated)
+                            if (client.Data.IsAuthenticated)
                                 await _playerHandler.HandleMovement(client, _clients, client.GetReader());
                             break;
                         case 3:  // Ping
                             await _utilsHandler.HandlePing(client.GetStream());
                             break;
                         case 4:  // Chat message
-                            if (client.PlayerData.IsAuthenticated)
+                            if (client.Data.IsAuthenticated)
                                 await _chatService.HandleChat(client, client.GetReader());
                             break;
                         case 10: // Login

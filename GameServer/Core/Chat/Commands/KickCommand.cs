@@ -26,11 +26,11 @@ namespace GameServer.Core.Chat
 
             if (!_clients.TryGetValue(targetUsername, out GameClient? targetClient)) { await packetHandler.SendGameMessage(sender, $"{targetUsername} is not online."); return; }
 
-            if (targetClient.PlayerData.Rank >= sender.PlayerData.Rank) { await packetHandler.SendGameMessage(sender, "You cannot kick your superiors."); return; }
+            if (targetClient.Data.Rank >= sender.Data.Rank) { await packetHandler.SendGameMessage(sender, "You cannot kick your superiors."); return; }
 
             // Broadcast kick message only to higher ranks.
-            string kickMessage = $"<col=FF0000>{targetUsername} has been kicked by {sender.PlayerData.Username}. Reason: {reason}";
-            var tasks = _clients.Values.Where(client => client.PlayerData.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, kickMessage));
+            string kickMessage = $"<col=FF0000>{targetUsername} has been kicked by {sender.Data.Username}. Reason: {reason}";
+            var tasks = _clients.Values.Where(client => client.Data.Rank >= RequiredRank).Select(client => packetHandler.SendGameMessage(client, kickMessage));
             await Task.WhenAll(tasks);
 
             targetClient.Disconnect();
