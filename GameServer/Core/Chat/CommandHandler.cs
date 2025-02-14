@@ -34,6 +34,7 @@ namespace GameServer.Core.Chat
             RegisterCommand(new UnbanCommand(_clients, _accountRepository));
             RegisterCommand(new MuteCommand(_clients, _accountRepository));
             RegisterCommand(new UnmuteCommand(_clients, _accountRepository));
+            RegisterCommand(new BattleCommand());
 
             RegisterCommand(new HelpCommand(_rankHelpMessages));
         }

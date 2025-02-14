@@ -5,13 +5,13 @@ using GameServer.Core.Network;
 
 namespace GameServer.Handlers
 {
-    public class ChatPacketHandler
+    public class ChatPacketHandler : PacketHandler
     {
         private const int MAX_MESSAGE_LENGTH = 150;
         private readonly Regex _sanitizePattern = new(@"[^\u0020-\u007E]", RegexOptions.Compiled);
         private readonly ConcurrentDictionary<string, GameClient> _clients;
 
-        public ChatPacketHandler(ConcurrentDictionary<string, GameClient> clients)
+        public ChatPacketHandler(ConcurrentDictionary<string, GameClient> clients) : base()
         {
             _clients = clients;
         }
@@ -96,5 +96,15 @@ namespace GameServer.Handlers
             await Task.WhenAll(tasks.Select(t => t.AsTask()));
         }
 
+        public async Task SendBattleInitiation(GameClient sender)
+        {
+            var packet = CreatePacket(30, buffer =>
+            {
+                buffer.WriteBits(4, 1);      // Battle initiation mask
+                buffer.WriteBits(8, 1);      // Battle ID for PoC
+            });
+
+            await sender.GetStream().WriteAsync(packet);
+        }
     }
 }

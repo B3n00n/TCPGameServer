@@ -103,7 +103,8 @@ namespace GameServer.Server.Core
                                 await _playerHandler.HandleMovement(client, _clients, client.GetReader());
                             break;
                         case 3:  // Ping
-                            await _utilsHandler.HandlePing(client.GetStream());
+                            if (client.Data.IsAuthenticated)
+                                await _utilsHandler.HandlePing(client.GetStream());
                             break;
                         case 4:  // Chat message
                             if (client.Data.IsAuthenticated)

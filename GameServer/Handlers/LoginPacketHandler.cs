@@ -37,7 +37,7 @@ namespace GameServer.Handlers
     {
         private readonly UserService _userService;
 
-        public LoginPacketHandler(UserService userService)
+        public LoginPacketHandler(UserService userService) : base()
         {
             _userService = userService;
         }
