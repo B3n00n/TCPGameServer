@@ -94,8 +94,6 @@ namespace GameServer.Server.Core
                 {
                     var opcode = await client.GetReader().ReadU8();
 
-                    Console.WriteLine($"Handling opcode: {opcode}");
-
                     switch (opcode)
                     {
                         case 2: // Player
