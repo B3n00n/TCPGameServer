@@ -37,7 +37,7 @@ namespace GameServer.Server.Core
 
         public GameServer()
         {
-            _listener = new TcpListener(IPAddress.Any, GameConfig.PORT);
+            _listener = new TcpListener(IPAddress.Any, GameConfig.GAME_SERVER_PORT);
             _clients = new ConcurrentDictionary<string, GameClient>();
             _playerIndexPool = new Pool<PlayerData>(5000);
 
@@ -140,7 +140,7 @@ namespace GameServer.Server.Core
         {
             _isRunning = true;
             _listener.Start();
-            Console.WriteLine($"Server started on port {GameConfig.PORT}");
+            Console.WriteLine($"Server started on port {GameConfig.GAME_SERVER_PORT}");
 
             while (_isRunning)
             {
