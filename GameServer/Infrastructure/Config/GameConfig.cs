@@ -2,7 +2,7 @@
 {
     public static class GameConfig
     {
-        public const int PORT = 43594;
+        public const int PORT = 30811;
         public const int REVISION = 1;
         public const int MAX_PLAYERS = 5000;
 

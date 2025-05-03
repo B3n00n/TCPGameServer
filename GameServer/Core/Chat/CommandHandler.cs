@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using GameServer.Core.Network;
 using GameServer.Handlers;
 using GameServer.Infrastructure.Repositories;
 
@@ -81,11 +80,7 @@ namespace GameServer.Core.Chat
         {
             for (int rank = 0; rank <= 6; rank++)
             {
-                var commandList = _commands.Values
-                    .Distinct()
-                    .Where(cmd => rank >= cmd.RequiredRank)
-                    .OrderBy(cmd => cmd.Triggers.First())
-                    .Select(cmd => $"/{cmd.Triggers.First()} - {cmd.Description}");
+                var commandList = _commands.Values.Distinct().Where(cmd => rank >= cmd.RequiredRank).OrderBy(cmd => cmd.Triggers.First()).Select(cmd => $"/{cmd.Triggers.First()} - {cmd.Description}");
 
                 _rankHelpMessages[rank] = "Available commands:\n" + string.Join("\n", commandList);
             }
